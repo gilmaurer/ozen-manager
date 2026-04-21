@@ -19,7 +19,14 @@ const TIME_FMT = new Intl.DateTimeFormat("he-IL", {
 
 function parseDb(value: string | null | undefined): Date | null {
   if (!value) return null;
-  const normalized = value.includes("T") ? value : value.replace(" ", "T") + "Z";
+  let normalized: string;
+  if (value.includes("T")) {
+    normalized = value;
+  } else if (value.includes(" ")) {
+    normalized = value.replace(" ", "T") + "Z";
+  } else {
+    normalized = value + "T00:00:00Z";
+  }
   const d = new Date(normalized);
   return isNaN(d.getTime()) ? null : d;
 }

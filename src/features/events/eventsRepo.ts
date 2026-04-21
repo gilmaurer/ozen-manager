@@ -1,52 +1,84 @@
 import { getDb } from "../../db/client";
-import type { EventRow, EventStatus } from "../../db/types";
+import type {
+  EventStatus,
+  EventType,
+  EventWithProducer,
+} from "../../db/types";
 
-export async function listEvents(): Promise<EventRow[]> {
+const SELECT_WITH_PRODUCER = `
+  SELECT events.*, producers.name AS producer_name
+  FROM events
+  LEFT JOIN producers ON events.producer_id = producers.id
+`;
+
+export async function listEvents(): Promise<EventWithProducer[]> {
   const db = await getDb();
-  return db.select<EventRow[]>("SELECT * FROM events ORDER BY starts_at ASC");
+  return db.select<EventWithProducer[]>(
+    `${SELECT_WITH_PRODUCER} ORDER BY events.date ASC, events.id ASC`,
+  );
 }
 
-export async function listUpcomingEvents(days = 14): Promise<EventRow[]> {
+export async function listUpcomingEvents(
+  days = 14,
+): Promise<EventWithProducer[]> {
   const db = await getDb();
-  return db.select<EventRow[]>(
-    `SELECT * FROM events
-     WHERE starts_at >= datetime('now')
-       AND starts_at <= datetime('now', '+' || $1 || ' days')
-     ORDER BY starts_at ASC`,
+  return db.select<EventWithProducer[]>(
+    `${SELECT_WITH_PRODUCER}
+     WHERE events.date >= date('now')
+       AND events.date <= date('now', '+' || $1 || ' days')
+     ORDER BY events.date ASC`,
     [days],
   );
 }
 
-export async function getEvent(id: number): Promise<EventRow | null> {
+export async function getEvent(
+  id: number,
+): Promise<EventWithProducer | null> {
   const db = await getDb();
-  const rows = await db.select<EventRow[]>(
-    "SELECT * FROM events WHERE id = $1",
+  const rows = await db.select<EventWithProducer[]>(
+    `${SELECT_WITH_PRODUCER} WHERE events.id = $1`,
     [id],
   );
   return rows[0] ?? null;
 }
 
+export async function listEventsByProducer(
+  producerId: number,
+): Promise<EventWithProducer[]> {
+  const db = await getDb();
+  return db.select<EventWithProducer[]>(
+    `${SELECT_WITH_PRODUCER}
+     WHERE events.producer_id = $1
+     ORDER BY events.date ASC`,
+    [producerId],
+  );
+}
+
 export interface EventInput {
   name: string;
-  starts_at: string;
-  ends_at: string | null;
-  venue_area: string | null;
-  notes: string | null;
+  date: string;
+  type: EventType | null;
+  producer_id: number | null;
   status: EventStatus;
+  deal: string | null;
+  ticket_link: string | null;
+  notes: string | null;
 }
 
 export async function createEvent(input: EventInput): Promise<number> {
   const db = await getDb();
   const res = await db.execute(
-    `INSERT INTO events (name, starts_at, ends_at, venue_area, notes, status)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
+    `INSERT INTO events (name, date, type, producer_id, status, deal, ticket_link, notes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [
       input.name,
-      input.starts_at,
-      input.ends_at,
-      input.venue_area,
-      input.notes,
+      input.date,
+      input.type,
+      input.producer_id,
       input.status,
+      input.deal,
+      input.ticket_link,
+      input.notes,
     ],
   );
   return res.lastInsertId as number;
@@ -56,16 +88,18 @@ export async function updateEvent(id: number, input: EventInput): Promise<void> 
   const db = await getDb();
   await db.execute(
     `UPDATE events
-        SET name = $1, starts_at = $2, ends_at = $3,
-            venue_area = $4, notes = $5, status = $6
-      WHERE id = $7`,
+        SET name = $1, date = $2, type = $3, producer_id = $4,
+            status = $5, deal = $6, ticket_link = $7, notes = $8
+      WHERE id = $9`,
     [
       input.name,
-      input.starts_at,
-      input.ends_at,
-      input.venue_area,
-      input.notes,
+      input.date,
+      input.type,
+      input.producer_id,
       input.status,
+      input.deal,
+      input.ticket_link,
+      input.notes,
       id,
     ],
   );

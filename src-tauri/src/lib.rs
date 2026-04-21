@@ -15,6 +15,18 @@ pub fn run() {
             sql: include_str!("../migrations/002_seed.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "event fields overhaul",
+            sql: include_str!("../migrations/003_event_fields.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 4,
+            description: "producers table + FK",
+            sql: include_str!("../migrations/004_producers.sql"),
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

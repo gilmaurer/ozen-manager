@@ -1,0 +1,132 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  createProducer,
+  deleteProducer,
+  listProducers,
+  ProducerInput,
+  ProducerWithCount,
+  updateProducer,
+} from "./producersRepo";
+import { Modal } from "../../components/Modal";
+import { ProducerForm } from "./ProducerForm";
+
+export function ProducersPage() {
+  const [producers, setProducers] = useState<ProducerWithCount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<ProducerWithCount | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  async function refresh() {
+    setLoading(true);
+    setProducers(await listProducers());
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  async function handleCreate(input: ProducerInput) {
+    await createProducer(input);
+    setCreating(false);
+    await refresh();
+  }
+
+  async function handleUpdate(input: ProducerInput) {
+    if (!editing) return;
+    await updateProducer(editing.id, input);
+    setEditing(null);
+    await refresh();
+  }
+
+  async function handleDelete(p: ProducerWithCount) {
+    if (p.event_count > 0) {
+      alert(
+        `למפיק "${p.name}" משויכים ${p.event_count} אירועים. יש למחוק או לשייך מחדש את האירועים לפני מחיקה.`,
+      );
+      return;
+    }
+    if (!confirm(`למחוק את המפיק "${p.name}"?`)) return;
+    await deleteProducer(p.id);
+    await refresh();
+  }
+
+  return (
+    <>
+      <div className="page-header">
+        <h1>מפיקים</h1>
+        <button className="btn" onClick={() => setCreating(true)}>
+          + מפיק חדש
+        </button>
+      </div>
+
+      <div className="card">
+        {loading ? (
+          <div className="empty">טוען…</div>
+        ) : producers.length === 0 ? (
+          <div className="empty">אין מפיקים עדיין.</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>שם</th>
+                <th>טלפון</th>
+                <th>מספר אירועים</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {producers.map((p) => (
+                <tr key={p.id}>
+                  <td>
+                    <Link
+                      to={`/producers/${p.id}`}
+                      className="row-value"
+                      dir="auto"
+                    >
+                      {p.name}
+                    </Link>
+                  </td>
+                  <td dir="ltr" style={{ textAlign: "start" }}>
+                    {p.phone ?? "—"}
+                  </td>
+                  <td className="muted">{p.event_count}</td>
+                  <td style={{ textAlign: "end" }}>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setEditing(p)}
+                    >
+                      עריכה
+                    </button>{" "}
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() => handleDelete(p)}
+                    >
+                      מחיקה
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <Modal open={creating} title="מפיק חדש" onClose={() => setCreating(false)}>
+        <ProducerForm
+          onSubmit={handleCreate}
+          onCancel={() => setCreating(false)}
+        />
+      </Modal>
+
+      <Modal open={!!editing} title="עריכת מפיק" onClose={() => setEditing(null)}>
+        <ProducerForm
+          initial={editing}
+          onSubmit={handleUpdate}
+          onCancel={() => setEditing(null)}
+        />
+      </Modal>
+    </>
+  );
+}

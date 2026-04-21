@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listUpcomingEvents } from "../events/eventsRepo";
 import { listTodaysShifts } from "../shifts/shiftsRepo";
-import type { EventRow, ShiftWithStaff } from "../../db/types";
-import { formatDateTime, formatTime } from "../../utils/format";
+import type { EventWithProducer, ShiftWithStaff } from "../../db/types";
+import { formatDate, formatTime } from "../../utils/format";
 import { StatusBadge } from "../../components/StatusBadge";
+import { eventTypeLabel } from "../events/labels";
 
 export function DashboardPage() {
-  const [events, setEvents] = useState<EventRow[]>([]);
+  const [events, setEvents] = useState<EventWithProducer[]>([]);
   const [shifts, setShifts] = useState<ShiftWithStaff[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -42,7 +43,7 @@ export function DashboardPage() {
                 <tr>
                   <th>שם</th>
                   <th>תאריך</th>
-                  <th>אזור</th>
+                  <th>סוג</th>
                   <th>סטטוס</th>
                 </tr>
               </thead>
@@ -54,8 +55,8 @@ export function DashboardPage() {
                         {e.name}
                       </Link>
                     </td>
-                    <td className="muted">{formatDateTime(e.starts_at)}</td>
-                    <td className="row-value" dir="auto">{e.venue_area ?? "—"}</td>
+                    <td className="muted">{formatDate(e.date)}</td>
+                    <td>{eventTypeLabel(e.type)}</td>
                     <td><StatusBadge status={e.status} /></td>
                   </tr>
                 ))}

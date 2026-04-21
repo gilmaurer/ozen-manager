@@ -3,6 +3,8 @@ import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { EventsPage } from "./features/events/EventsPage";
 import { EventDetailPage } from "./features/events/EventDetailPage";
 import { StaffPage } from "./features/staff/StaffPage";
+import { ProducersPage } from "./features/producers/ProducersPage";
+import { ProducerDetailPage } from "./features/producers/ProducerDetailPage";
 
 function Sidebar() {
   return (
@@ -13,6 +15,9 @@ function Sidebar() {
       </NavLink>
       <NavLink to="/events" className="nav-link">
         אירועים
+      </NavLink>
+      <NavLink to="/producers" className="nav-link">
+        מפיקים
       </NavLink>
       <NavLink to="/staff" className="nav-link">
         צוות
@@ -31,6 +36,8 @@ export default function App() {
             <Route path="/" element={<DashboardPage />} />
             <Route path="/events" element={<EventsPage />} />
             <Route path="/events/:id" element={<EventDetailPage />} />
+            <Route path="/producers" element={<ProducersPage />} />
+            <Route path="/producers/:id" element={<ProducerDetailPage />} />
             <Route path="/staff" element={<StaffPage />} />
           </Routes>
         </main>

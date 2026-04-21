@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import type { EventRow, ShiftWithStaff, StaffRow } from "../../db/types";
+import type {
+  EventWithProducer,
+  ShiftWithStaff,
+  StaffRow,
+} from "../../db/types";
 import { getEvent } from "./eventsRepo";
 import { listStaff } from "../staff/staffRepo";
 import {
@@ -10,15 +14,16 @@ import {
   ShiftInput,
   updateShift,
 } from "../shifts/shiftsRepo";
-import { formatDateTime, formatTime } from "../../utils/format";
+import { formatDate, formatTime } from "../../utils/format";
 import { StatusBadge } from "../../components/StatusBadge";
 import { Modal } from "../../components/Modal";
 import { ShiftForm } from "../shifts/ShiftForm";
+import { eventTypeLabel } from "./labels";
 
 export function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const eventId = Number(id);
-  const [event, setEvent] = useState<EventRow | null>(null);
+  const [event, setEvent] = useState<EventWithProducer | null>(null);
   const [shifts, setShifts] = useState<ShiftWithStaff[]>([]);
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,18 +85,48 @@ export function EventDetailPage() {
           </div>
           <h1 className="row-value" dir="auto">{event.name}</h1>
           <div className="muted" style={{ marginTop: 4 }}>
-            {formatDateTime(event.starts_at)}
-            {event.ends_at ? ` – ${formatDateTime(event.ends_at)}` : ""} · <StatusBadge status={event.status} />
+            {formatDate(event.date)} · <StatusBadge status={event.status} />
           </div>
         </div>
       </div>
 
-      {(event.venue_area || event.notes) && (
+      {(event.type || event.producer_name || event.deal || event.ticket_link || event.notes) && (
         <div className="card" style={{ marginBottom: 16 }}>
-          {event.venue_area && (
+          {event.type && (
             <div style={{ marginBottom: 8 }}>
-              <span className="muted">אזור: </span>
-              <span className="row-value" dir="auto">{event.venue_area}</span>
+              <span className="muted">סוג: </span>
+              <span>{eventTypeLabel(event.type)}</span>
+            </div>
+          )}
+          {event.producer_name && (
+            <div style={{ marginBottom: 8 }}>
+              <span className="muted">מפיק: </span>
+              <Link
+                to={`/producers/${event.producer_id}`}
+                className="row-value"
+                dir="auto"
+              >
+                {event.producer_name}
+              </Link>
+            </div>
+          )}
+          {event.deal && (
+            <div style={{ marginBottom: 8 }}>
+              <span className="muted">דיל: </span>
+              <span className="row-value" dir="auto">{event.deal}</span>
+            </div>
+          )}
+          {event.ticket_link && (
+            <div style={{ marginBottom: 8 }}>
+              <span className="muted">קישור לכרטיסים: </span>
+              <a
+                href={event.ticket_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                dir="ltr"
+              >
+                {event.ticket_link}
+              </a>
             </div>
           )}
           {event.notes && (

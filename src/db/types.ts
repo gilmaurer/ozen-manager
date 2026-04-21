@@ -1,13 +1,40 @@
-export type EventStatus = "draft" | "published" | "archived";
+export type EventStatus =
+  | "draft"
+  | "signed"
+  | "active"
+  | "waiting_invoice"
+  | "wait_payment"
+  | "wait_summary"
+  | "done";
+
+export type EventType =
+  | "party"
+  | "standup"
+  | "concert"
+  | "lecture"
+  | "private_event";
 
 export interface EventRow {
   id: number;
   name: string;
-  starts_at: string;
-  ends_at: string | null;
-  venue_area: string | null;
-  notes: string | null;
+  date: string;
+  type: EventType | null;
+  producer_id: number | null;
   status: EventStatus;
+  deal: string | null;
+  ticket_link: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface EventWithProducer extends EventRow {
+  producer_name: string | null;
+}
+
+export interface ProducerRow {
+  id: number;
+  name: string;
+  phone: string | null;
   created_at: string;
 }
 
