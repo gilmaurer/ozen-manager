@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { EventStatus, EventWithProducer } from "../../db/types";
 import { formatDate } from "../../utils/format";
-import { eventTypeLabel } from "./labels";
+import { useEnums } from "../../services/enums";
 import { InlineStatusSelect } from "./InlineStatusSelect";
 
 interface Cell {
@@ -34,12 +34,22 @@ function toIso(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+function byDateThenTime(
+  a: EventWithProducer,
+  b: EventWithProducer,
+): number {
+  const d = a.date.localeCompare(b.date);
+  if (d !== 0) return d;
+  return (a.start_time ?? "").localeCompare(b.start_time ?? "");
+}
+
 interface Props {
   events: EventWithProducer[];
   onStatusChange: (event: EventWithProducer, next: EventStatus) => void;
 }
 
 export function EventsCalendar({ events, onStatusChange }: Props) {
+  const { statusByCode, typeByCode } = useEnums();
   const [cursor, setCursor] = useState<Date>(() => startOfMonth(new Date()));
 
   const { weeks, monthEvents } = useMemo(() => {
@@ -48,6 +58,9 @@ export function EventsCalendar({ events, onStatusChange }: Props) {
       const list = byDate.get(e.date) ?? [];
       list.push(e);
       byDate.set(e.date, list);
+    }
+    for (const list of byDate.values()) {
+      list.sort(byDateThenTime);
     }
 
     const today = todayIso();
@@ -78,7 +91,7 @@ export function EventsCalendar({ events, onStatusChange }: Props) {
     const monthEnd = toIso(monthEndDate);
     const monthEvents = events
       .filter((e) => e.date >= monthStart && e.date <= monthEnd)
-      .sort((a, b) => a.date.localeCompare(b.date));
+      .sort(byDateThenTime);
 
     return { weeks, monthEvents };
   }, [events, cursor]);
@@ -131,10 +144,13 @@ export function EventsCalendar({ events, onStatusChange }: Props) {
                 <Link
                   key={e.id}
                   to={`/events/${e.id}`}
-                  className={`calendar-event badge badge-${e.status}`}
+                  className={`calendar-event badge badge-color-${statusByCode[e.status]?.color ?? "gray"}`}
                   dir="auto"
                   title={e.name}
                 >
+                  {e.start_time && (
+                    <span dir="ltr">{e.start_time.slice(0, 5)} · </span>
+                  )}
                   {e.name}
                 </Link>
               ))}
@@ -157,6 +173,7 @@ export function EventsCalendar({ events, onStatusChange }: Props) {
             <thead>
               <tr>
                 <th>תאריך</th>
+                <th>שעה</th>
                 <th>שם</th>
                 <th>סוג</th>
                 <th>סטטוס</th>
@@ -165,7 +182,12 @@ export function EventsCalendar({ events, onStatusChange }: Props) {
             <tbody>
               {monthEvents.map((e) => (
                 <tr key={e.id}>
-                  <td className="muted">{formatDate(e.date)}</td>
+                  <td className="muted" dir="ltr" style={{ textAlign: "start" }}>
+                    {formatDate(e.date)}
+                  </td>
+                  <td className="muted" dir="ltr" style={{ textAlign: "start" }}>
+                    {e.start_time ? e.start_time.slice(0, 5) : "—"}
+                  </td>
                   <td>
                     <Link
                       to={`/events/${e.id}`}
@@ -175,7 +197,7 @@ export function EventsCalendar({ events, onStatusChange }: Props) {
                       {e.name}
                     </Link>
                   </td>
-                  <td>{eventTypeLabel(e.type)}</td>
+                  <td>{e.type ? typeByCode[e.type]?.label ?? e.type : "—"}</td>
                   <td>
                     <InlineStatusSelect
                       value={e.status}

@@ -1,31 +1,57 @@
-import { getDb } from "../../db/client";
 import type { ShiftRow, ShiftWithStaff } from "../../db/types";
+import { supabase } from "../../db/supabase";
+import { withRetry } from "../../services/network";
 
-export async function listShiftsForEvent(eventId: number): Promise<ShiftWithStaff[]> {
-  const db = await getDb();
-  return db.select<ShiftWithStaff[]>(
-    `SELECT s.*, st.full_name AS staff_name, e.name AS event_name
-       FROM shifts s
-       LEFT JOIN staff st ON st.id = s.staff_id
-       JOIN events e ON e.id = s.event_id
-      WHERE s.event_id = $1
-      ORDER BY s.starts_at ASC`,
-    [eventId],
-  );
+const SELECT =
+  "*, staff:staff(id, full_name), event:events(id, name)";
+
+type ShiftRowWithJoin = ShiftRow & {
+  staff?: { id: number; full_name: string } | null;
+  event?: { id: number; name: string } | null;
+};
+
+function normalize(row: ShiftRowWithJoin): ShiftWithStaff {
+  const { staff, event, ...rest } = row;
+  return {
+    ...rest,
+    staff_name: staff?.full_name ?? null,
+    event_name: event?.name ?? "",
+  };
+}
+
+export async function listShiftsForEvent(
+  eventId: number,
+): Promise<ShiftWithStaff[]> {
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from("shifts")
+      .select(SELECT)
+      .eq("event_id", eventId)
+      .order("starts_at", { ascending: true });
+    if (error) throw error;
+    return (data as ShiftRowWithJoin[] | null)?.map(normalize) ?? [];
+  });
 }
 
 export async function listTodaysShifts(): Promise<ShiftWithStaff[]> {
-  const db = await getDb();
-  return db.select<ShiftWithStaff[]>(
-    `SELECT s.*, st.full_name AS staff_name, e.name AS event_name
-       FROM shifts s
-       LEFT JOIN staff st ON st.id = s.staff_id
-       JOIN events e ON e.id = s.event_id
-      WHERE date(s.starts_at) = date('now', 'localtime')
-         OR date(s.ends_at)   = date('now', 'localtime')
-         OR (s.starts_at <= datetime('now') AND s.ends_at >= datetime('now'))
-      ORDER BY s.starts_at ASC`,
-  );
+  return withRetry(async () => {
+    // Today's shifts = any shift whose start or end falls on today's local date,
+    // or that spans midnight.
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setHours(23, 59, 59, 999);
+    const { data, error } = await supabase
+      .from("shifts")
+      .select(SELECT)
+      .or(
+        `and(starts_at.gte.${start.toISOString()},starts_at.lte.${end.toISOString()}),and(ends_at.gte.${start.toISOString()},ends_at.lte.${end.toISOString()})`,
+      )
+      .order("starts_at", { ascending: true });
+    if (error) throw error;
+    return (data as ShiftRowWithJoin[] | null)?.map(normalize) ?? [];
+  });
 }
 
 export interface ShiftInput {
@@ -38,44 +64,29 @@ export interface ShiftInput {
 }
 
 export async function createShift(input: ShiftInput): Promise<number> {
-  const db = await getDb();
-  const res = await db.execute(
-    `INSERT INTO shifts (event_id, staff_id, starts_at, ends_at, position, notes)
-     VALUES ($1, $2, $3, $4, $5, $6)`,
-    [
-      input.event_id,
-      input.staff_id,
-      input.starts_at,
-      input.ends_at,
-      input.position,
-      input.notes,
-    ],
-  );
-  return res.lastInsertId as number;
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from("shifts")
+      .insert(input)
+      .select("id")
+      .single();
+    if (error) throw error;
+    return (data as { id: number }).id;
+  });
 }
 
 export async function updateShift(id: number, input: ShiftInput): Promise<void> {
-  const db = await getDb();
-  await db.execute(
-    `UPDATE shifts
-        SET event_id = $1, staff_id = $2, starts_at = $3,
-            ends_at = $4, position = $5, notes = $6
-      WHERE id = $7`,
-    [
-      input.event_id,
-      input.staff_id,
-      input.starts_at,
-      input.ends_at,
-      input.position,
-      input.notes,
-      id,
-    ],
-  );
+  return withRetry(async () => {
+    const { error } = await supabase.from("shifts").update(input).eq("id", id);
+    if (error) throw error;
+  });
 }
 
 export async function deleteShift(id: number): Promise<void> {
-  const db = await getDb();
-  await db.execute("DELETE FROM shifts WHERE id = $1", [id]);
+  return withRetry(async () => {
+    const { error } = await supabase.from("shifts").delete().eq("id", id);
+    if (error) throw error;
+  });
 }
 
 export type { ShiftRow };

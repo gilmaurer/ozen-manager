@@ -41,7 +41,7 @@ export function StaffPage() {
   }
 
   async function handleToggle(s: StaffRow) {
-    await toggleStaffActive(s.id, s.active ? 0 : 1);
+    await toggleStaffActive(s.id, !s.active);
     await refresh();
   }
 
@@ -87,7 +87,7 @@ export function StaffPage() {
                   <td>
                     <input
                       type="checkbox"
-                      checked={!!s.active}
+                      checked={s.active}
                       onChange={() => handleToggle(s)}
                       style={{ width: "auto" }}
                     />

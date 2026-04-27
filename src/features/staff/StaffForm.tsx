@@ -15,7 +15,7 @@ export function StaffForm({ initial, onSubmit, onCancel }: Props) {
   const [hourlyRate, setHourlyRate] = useState<string>(
     initial?.hourly_rate != null ? String(initial.hourly_rate) : "",
   );
-  const [active, setActive] = useState(initial ? !!initial.active : true);
+  const [active, setActive] = useState(initial?.active ?? true);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
@@ -28,7 +28,7 @@ export function StaffForm({ initial, onSubmit, onCancel }: Props) {
         role: role.trim() || null,
         phone: phone.trim() || null,
         hourly_rate: hourlyRate ? Number(hourlyRate) : null,
-        active: active ? 1 : 0,
+        active,
       });
     } finally {
       setSubmitting(false);

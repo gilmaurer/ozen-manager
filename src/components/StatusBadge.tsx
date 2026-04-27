@@ -1,12 +1,13 @@
-import type { EventStatus } from "../db/types";
-import { EVENT_STATUS_LABELS } from "../features/events/labels";
+import { useEnums } from "../services/enums";
 
-export function StatusBadge({ status }: { status: EventStatus }) {
-  return (
-    <span className={`badge badge-${status}`}>{EVENT_STATUS_LABELS[status]}</span>
-  );
+export function StatusBadge({ status }: { status: string }) {
+  const { statusByCode } = useEnums();
+  const s = statusByCode[status];
+  const label = s?.label ?? status;
+  const color = s?.color ?? "gray";
+  return <span className={`badge badge-color-${color}`}>{label}</span>;
 }
 
-export function statusLabel(status: EventStatus): string {
-  return EVENT_STATUS_LABELS[status];
+export function statusLabel(status: string, byCode: Record<string, { label: string }>): string {
+  return byCode[status]?.label ?? status;
 }

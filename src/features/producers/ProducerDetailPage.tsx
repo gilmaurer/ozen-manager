@@ -13,12 +13,15 @@ import { Modal } from "../../components/Modal";
 import { ProducerForm } from "./ProducerForm";
 import { StatusBadge } from "../../components/StatusBadge";
 import { formatDate } from "../../utils/format";
-import { eventTypeLabel } from "../events/labels";
+import { useEnums } from "../../services/enums";
+import { useDialog } from "../../components/dialog";
 
 export function ProducerDetailPage() {
   const { id } = useParams<{ id: string }>();
   const producerId = Number(id);
   const navigate = useNavigate();
+  const { typeByCode } = useEnums();
+  const { ask, notify } = useDialog();
   const [producer, setProducer] = useState<ProducerRow | null>(null);
   const [events, setEvents] = useState<EventWithProducer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,12 +51,12 @@ export function ProducerDetailPage() {
   async function handleDelete() {
     const count = await countEventsByProducer(producerId);
     if (count > 0) {
-      alert(
+      await notify(
         `למפיק זה משויכים ${count} אירועים. יש למחוק או לשייך מחדש את האירועים לפני מחיקה.`,
       );
       return;
     }
-    if (!confirm("למחוק את המפיק?")) return;
+    if (!(await ask("למחוק את המפיק?"))) return;
     await deleteProducer(producerId);
     navigate("/producers");
   }
@@ -124,7 +127,7 @@ export function ProducerDetailPage() {
                     </Link>
                   </td>
                   <td className="muted">{formatDate(e.date)}</td>
-                  <td>{eventTypeLabel(e.type)}</td>
+                  <td>{e.type ? typeByCode[e.type]?.label ?? e.type : "—"}</td>
                   <td>
                     <StatusBadge status={e.status} />
                   </td>

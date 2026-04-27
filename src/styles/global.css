@@ -69,10 +69,79 @@ h3 { font-size: 16px; }
   gap: 8px;
 }
 
-.sidebar h1 {
-  font-size: 18px;
-  margin: 0 8px 16px 8px;
+.sidebar-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.backup-status-error    { color: var(--danger); border-color: var(--danger); }
+.backup-status-disabled { color: var(--text-muted); font-style: italic; }
+
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+}
+.login-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 48px 56px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  max-width: 380px;
+  width: 100%;
+}
+.login-logo {
+  width: 120px;
+  height: 120px;
+  display: block;
+  margin: 0 auto 16px;
+  filter: invert(1);
+}
+.login-card h1 {
+  font-size: 28px;
+  margin: 0 0 4px;
   color: var(--accent);
+}
+.login-card .btn {
+  margin-top: 24px;
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 15px;
+}
+.login-error {
+  margin-top: 16px;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.offline-banner {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(244, 162, 97, 0.15);
+  color: var(--warn);
+  padding: 8px 14px;
+  text-align: center;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-logo {
+  width: 96px;
+  height: 96px;
+  display: block;
+  margin: 4px auto 16px;
+  filter: invert(1);
+  image-rendering: auto;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .nav-link {
@@ -166,6 +235,23 @@ th {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+table.centered th,
+table.centered td {
+  text-align: center !important;
+}
+table.centered td > * {
+  text-align: center !important;
+  margin-inline: auto;
+}
+table.centered th > *,
+table.centered td > * {
+  justify-content: center;
+}
+table.centered select.status-select {
+  display: inline-block;
+  margin: 0 auto;
+}
+
 tr:hover td {
   background: var(--bg-panel-hover);
 }
@@ -179,13 +265,13 @@ tr:hover td {
   background: var(--bg-panel-hover);
   color: var(--text-muted);
 }
-.badge-draft            { background: rgba(139, 147, 167, 0.15); color: var(--text-muted); }
-.badge-signed           { background: rgba(124, 92, 255, 0.18);  color: var(--accent); }
-.badge-active           { background: rgba(46, 194, 126, 0.28);  color: var(--success); }
-.badge-waiting_invoice  { background: rgba(244, 162, 97, 0.20);  color: var(--warn); }
-.badge-wait_payment     { background: rgba(239, 71, 111, 0.15);  color: var(--danger); }
-.badge-wait_summary     { background: rgba(244, 162, 97, 0.10);  color: var(--warn); }
-.badge-done             { background: rgba(46, 194, 126, 0.12);  color: var(--success); }
+.badge-color-gray        { background: rgba(139, 147, 167, 0.15); color: var(--text-muted); }
+.badge-color-purple      { background: rgba(124, 92, 255, 0.18);  color: var(--accent); }
+.badge-color-green       { background: rgba(46, 194, 126, 0.28);  color: var(--success); }
+.badge-color-orange      { background: rgba(244, 162, 97, 0.20);  color: var(--warn); }
+.badge-color-red         { background: rgba(239, 71, 111, 0.15);  color: var(--danger); }
+.badge-color-yellow      { background: rgba(244, 162, 97, 0.10);  color: var(--warn); }
+.badge-color-green-muted { background: rgba(46, 194, 126, 0.12);  color: var(--success); }
 
 .status-select {
   border: none;
@@ -398,3 +484,9 @@ label {
 .filter-bar .filter-search { flex: 1 1 200px; min-width: 160px; }
 .filter-bar .filter-date { width: 150px; }
 .filter-bar .filter-spacer { flex: 1; }
+
+.detail-row {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.detail-row:last-child { border-bottom: none; }

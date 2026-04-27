@@ -1,24 +1,29 @@
-import type { EventStatus } from "../../db/types";
-import { EVENT_STATUS_LABELS, EVENT_STATUS_OPTIONS } from "./labels";
+import { useEnums } from "../../services/enums";
 
 interface Props {
-  value: EventStatus;
-  onChange: (next: EventStatus) => void;
+  value: string;
+  onChange: (next: string) => void;
   disabled?: boolean;
 }
 
 export function InlineStatusSelect({ value, onChange, disabled }: Props) {
+  const { statuses, statusByCode } = useEnums();
+  const current = statusByCode[value];
+  const color = current?.color ?? "gray";
   return (
     <select
-      className={`badge badge-${value} status-select`}
+      className={`badge badge-color-${color} status-select`}
       value={value}
       disabled={disabled}
       onClick={(e) => e.stopPropagation()}
-      onChange={(e) => onChange(e.target.value as EventStatus)}
+      onChange={(e) => onChange(e.target.value)}
     >
-      {EVENT_STATUS_OPTIONS.map((s) => (
-        <option key={s} value={s}>
-          {EVENT_STATUS_LABELS[s]}
+      {!current && (
+        <option value={value}>{value}</option>
+      )}
+      {statuses.map((s) => (
+        <option key={s.code} value={s.code}>
+          {s.label}
         </option>
       ))}
     </select>

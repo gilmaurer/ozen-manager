@@ -1,111 +1,120 @@
-import { getDb } from "../../db/client";
 import type {
   EventStatus,
   EventType,
   EventWithProducer,
 } from "../../db/types";
+import { supabase } from "../../db/supabase";
+import { withRetry } from "../../services/network";
 
-const SELECT_WITH_PRODUCER = `
-  SELECT events.*, producers.name AS producer_name
-  FROM events
-  LEFT JOIN producers ON events.producer_id = producers.id
-`;
+const SELECT = "*, producer:producers(id, name), summary:event_summaries(id)";
+
+type EventRowWithJoin = Omit<EventWithProducer, "producer_name" | "has_summary"> & {
+  producer?: { id: number; name: string } | null;
+  summary?: { id: number }[] | { id: number } | null;
+};
+
+function normalize(row: EventRowWithJoin): EventWithProducer {
+  const { producer, summary, ...rest } = row;
+  const has_summary = Array.isArray(summary) ? summary.length > 0 : !!summary;
+  return { ...rest, producer_name: producer?.name ?? null, has_summary };
+}
 
 export async function listEvents(): Promise<EventWithProducer[]> {
-  const db = await getDb();
-  return db.select<EventWithProducer[]>(
-    `${SELECT_WITH_PRODUCER} ORDER BY events.date ASC, events.id ASC`,
-  );
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from("events")
+      .select(SELECT)
+      .order("date", { ascending: true })
+      .order("id", { ascending: true });
+    if (error) throw error;
+    return (data as EventRowWithJoin[] | null)?.map(normalize) ?? [];
+  });
 }
 
 export async function listUpcomingEvents(
   days = 14,
 ): Promise<EventWithProducer[]> {
-  const db = await getDb();
-  return db.select<EventWithProducer[]>(
-    `${SELECT_WITH_PRODUCER}
-     WHERE events.date >= date('now')
-       AND events.date <= date('now', '+' || $1 || ' days')
-     ORDER BY events.date ASC`,
-    [days],
-  );
+  return withRetry(async () => {
+    const today = new Date();
+    const until = new Date();
+    until.setDate(today.getDate() + days);
+    const toIso = (d: Date) => d.toISOString().slice(0, 10);
+    const { data, error } = await supabase
+      .from("events")
+      .select(SELECT)
+      .gte("date", toIso(today))
+      .lte("date", toIso(until))
+      .order("date", { ascending: true });
+    if (error) throw error;
+    return (data as EventRowWithJoin[] | null)?.map(normalize) ?? [];
+  });
 }
 
 export async function getEvent(
   id: number,
 ): Promise<EventWithProducer | null> {
-  const db = await getDb();
-  const rows = await db.select<EventWithProducer[]>(
-    `${SELECT_WITH_PRODUCER} WHERE events.id = $1`,
-    [id],
-  );
-  return rows[0] ?? null;
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from("events")
+      .select(SELECT)
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? normalize(data as EventRowWithJoin) : null;
+  });
 }
 
 export async function listEventsByProducer(
   producerId: number,
 ): Promise<EventWithProducer[]> {
-  const db = await getDb();
-  return db.select<EventWithProducer[]>(
-    `${SELECT_WITH_PRODUCER}
-     WHERE events.producer_id = $1
-     ORDER BY events.date ASC`,
-    [producerId],
-  );
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from("events")
+      .select(SELECT)
+      .eq("producer_id", producerId)
+      .order("date", { ascending: true });
+    if (error) throw error;
+    return (data as EventRowWithJoin[] | null)?.map(normalize) ?? [];
+  });
 }
 
 export interface EventInput {
   name: string;
   date: string;
+  start_time: string | null;
   type: EventType | null;
+  sub_type: string | null;
   producer_id: number | null;
   status: EventStatus;
-  deal: string | null;
+  deal: number | null;
+  campaign: number | null;
+  campaign_amount: number | null;
   ticket_link: string | null;
   notes: string | null;
 }
 
 export async function createEvent(input: EventInput): Promise<number> {
-  const db = await getDb();
-  const res = await db.execute(
-    `INSERT INTO events (name, date, type, producer_id, status, deal, ticket_link, notes)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-    [
-      input.name,
-      input.date,
-      input.type,
-      input.producer_id,
-      input.status,
-      input.deal,
-      input.ticket_link,
-      input.notes,
-    ],
-  );
-  return res.lastInsertId as number;
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from("events")
+      .insert(input)
+      .select("id")
+      .single();
+    if (error) throw error;
+    return (data as { id: number }).id;
+  });
 }
 
 export async function updateEvent(id: number, input: EventInput): Promise<void> {
-  const db = await getDb();
-  await db.execute(
-    `UPDATE events
-        SET name = $1, date = $2, type = $3, producer_id = $4,
-            status = $5, deal = $6, ticket_link = $7, notes = $8
-      WHERE id = $9`,
-    [
-      input.name,
-      input.date,
-      input.type,
-      input.producer_id,
-      input.status,
-      input.deal,
-      input.ticket_link,
-      input.notes,
-      id,
-    ],
-  );
+  return withRetry(async () => {
+    const { error } = await supabase.from("events").update(input).eq("id", id);
+    if (error) throw error;
+  });
 }
 
 export async function deleteEvent(id: number): Promise<void> {
-  const db = await getDb();
-  await db.execute("DELETE FROM events WHERE id = $1", [id]);
+  return withRetry(async () => {
+    const { error } = await supabase.from("events").delete().eq("id", id);
+    if (error) throw error;
+  });
 }

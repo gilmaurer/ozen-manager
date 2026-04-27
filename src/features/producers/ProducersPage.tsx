@@ -9,9 +9,11 @@ import {
   updateProducer,
 } from "./producersRepo";
 import { Modal } from "../../components/Modal";
+import { useDialog } from "../../components/dialog";
 import { ProducerForm } from "./ProducerForm";
 
 export function ProducersPage() {
+  const { ask, notify } = useDialog();
   const [producers, setProducers] = useState<ProducerWithCount[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<ProducerWithCount | null>(null);
@@ -42,12 +44,12 @@ export function ProducersPage() {
 
   async function handleDelete(p: ProducerWithCount) {
     if (p.event_count > 0) {
-      alert(
+      await notify(
         `למפיק "${p.name}" משויכים ${p.event_count} אירועים. יש למחוק או לשייך מחדש את האירועים לפני מחיקה.`,
       );
       return;
     }
-    if (!confirm(`למחוק את המפיק "${p.name}"?`)) return;
+    if (!(await ask(`למחוק את המפיק "${p.name}"?`))) return;
     await deleteProducer(p.id);
     await refresh();
   }

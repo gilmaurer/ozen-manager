@@ -1,5 +1,6 @@
-import { getDb } from "../../db/client";
 import type { ProducerRow } from "../../db/types";
+import { supabase } from "../../db/supabase";
+import { withRetry } from "../../services/network";
 
 export type ProducerWithCount = ProducerRow & { event_count: number };
 
@@ -9,57 +10,72 @@ export interface ProducerInput {
 }
 
 export async function listProducers(): Promise<ProducerWithCount[]> {
-  const db = await getDb();
-  return db.select<ProducerWithCount[]>(
-    `SELECT producers.*, COUNT(events.id) AS event_count
-     FROM producers
-     LEFT JOIN events ON events.producer_id = producers.id
-     GROUP BY producers.id
-     ORDER BY producers.name COLLATE NOCASE ASC`,
-  );
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from("producers")
+      .select("*, events(id)")
+      .order("name", { ascending: true });
+    if (error) throw error;
+    return (data ?? []).map((p) => {
+      const { events, ...rest } = p as ProducerRow & { events: { id: number }[] };
+      return { ...rest, event_count: events?.length ?? 0 };
+    });
+  });
 }
 
 export async function getProducer(id: number): Promise<ProducerRow | null> {
-  const db = await getDb();
-  const rows = await db.select<ProducerRow[]>(
-    "SELECT * FROM producers WHERE id = $1",
-    [id],
-  );
-  return rows[0] ?? null;
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from("producers")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) throw error;
+    return data as ProducerRow | null;
+  });
 }
 
 export async function createProducer(input: ProducerInput): Promise<number> {
-  const db = await getDb();
-  const res = await db.execute(
-    `INSERT INTO producers (name, phone) VALUES ($1, $2)`,
-    [input.name.trim(), input.phone],
-  );
-  return res.lastInsertId as number;
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from("producers")
+      .insert({ name: input.name.trim(), phone: input.phone })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return (data as { id: number }).id;
+  });
 }
 
 export async function updateProducer(
   id: number,
   input: ProducerInput,
 ): Promise<void> {
-  const db = await getDb();
-  await db.execute(
-    `UPDATE producers SET name = $1, phone = $2 WHERE id = $3`,
-    [input.name.trim(), input.phone, id],
-  );
+  return withRetry(async () => {
+    const { error } = await supabase
+      .from("producers")
+      .update({ name: input.name.trim(), phone: input.phone })
+      .eq("id", id);
+    if (error) throw error;
+  });
 }
 
 export async function deleteProducer(id: number): Promise<void> {
-  const db = await getDb();
-  await db.execute("DELETE FROM producers WHERE id = $1", [id]);
+  return withRetry(async () => {
+    const { error } = await supabase.from("producers").delete().eq("id", id);
+    if (error) throw error;
+  });
 }
 
 export async function countEventsByProducer(id: number): Promise<number> {
-  const db = await getDb();
-  const rows = await db.select<{ c: number }[]>(
-    "SELECT COUNT(*) AS c FROM events WHERE producer_id = $1",
-    [id],
-  );
-  return rows[0]?.c ?? 0;
+  return withRetry(async () => {
+    const { count, error } = await supabase
+      .from("events")
+      .select("id", { count: "exact", head: true })
+      .eq("producer_id", id);
+    if (error) throw error;
+    return count ?? 0;
+  });
 }
 
 export async function findProducerByName(
@@ -67,12 +83,15 @@ export async function findProducerByName(
 ): Promise<ProducerRow | null> {
   const trimmed = name.trim();
   if (!trimmed) return null;
-  const db = await getDb();
-  const rows = await db.select<ProducerRow[]>(
-    "SELECT * FROM producers WHERE name = $1 COLLATE NOCASE",
-    [trimmed],
-  );
-  return rows[0] ?? null;
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from("producers")
+      .select("*")
+      .ilike("name", trimmed)
+      .maybeSingle();
+    if (error) throw error;
+    return data as ProducerRow | null;
+  });
 }
 
 export async function resolveOrCreateProducerByName(

@@ -1,27 +1,18 @@
-export type EventStatus =
-  | "draft"
-  | "signed"
-  | "active"
-  | "waiting_invoice"
-  | "wait_payment"
-  | "wait_summary"
-  | "done";
-
-export type EventType =
-  | "party"
-  | "standup"
-  | "concert"
-  | "lecture"
-  | "private_event";
+export type EventStatus = string;
+export type EventType = string;
 
 export interface EventRow {
   id: number;
   name: string;
   date: string;
+  start_time: string | null;
   type: EventType | null;
+  sub_type: string | null;
   producer_id: number | null;
   status: EventStatus;
-  deal: string | null;
+  deal: number | null;
+  campaign: number | null;
+  campaign_amount: number | null;
   ticket_link: string | null;
   notes: string | null;
   created_at: string;
@@ -29,6 +20,37 @@ export interface EventRow {
 
 export interface EventWithProducer extends EventRow {
   producer_name: string | null;
+  has_summary: boolean;
+}
+
+export interface EventTypeStaffRow {
+  id: number;
+  event_type_code: string;
+  sub_type: string | null;
+  role: string;
+  quantity: number;
+  cost: number;
+}
+
+export interface EventSummaryRow {
+  id: number;
+  event_id: number;
+  counter: number | null;
+  bar_cash: number;
+  bar_credit: number;
+  bar_expenses: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SummaryTicketRow {
+  id: number;
+  summary_id: number;
+  kind: "presale" | "box_office";
+  price: number;
+  quantity: number;
+  source: string;
+  commission: number;
 }
 
 export interface ProducerRow {
@@ -44,7 +66,7 @@ export interface StaffRow {
   role: string | null;
   phone: string | null;
   hourly_rate: number | null;
-  active: number;
+  active: boolean;
   created_at: string;
 }
 

@@ -28,3 +28,7 @@ dist-ssr
 *.db-journal
 *.sqlite
 *.sqlite-journal
+
+# Env
+.env
+.env.local

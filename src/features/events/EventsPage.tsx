@@ -22,16 +22,18 @@ import { Modal } from "../../components/Modal";
 import { EventForm, EventFormValues } from "./EventForm";
 import { EventsCalendar } from "./EventsCalendar";
 import { InlineStatusSelect } from "./InlineStatusSelect";
+import { useEnums } from "../../services/enums";
 import {
-  EVENT_STATUS_LABELS,
-  EVENT_STATUS_OPTIONS,
-  EVENT_TYPE_LABELS,
-  EVENT_TYPE_OPTIONS,
-  eventTypeLabel,
-} from "./labels";
+  listSummaryAggregates,
+  SummaryAggregate,
+} from "../summaries/summariesRepo";
+import { listAllEventTypeStaff } from "../summaries/settingsRepo";
+import { useDialog } from "../../components/dialog";
 
 const VIEW_STORAGE_KEY = "ozen.events.view";
+const SCOPE_STORAGE_KEY = "ozen.events.scope";
 type View = "list" | "calendar";
+type Scope = "all" | "summaries";
 
 interface Filters {
   q: string;
@@ -82,17 +84,45 @@ export function EventsPage() {
     const saved = localStorage.getItem(VIEW_STORAGE_KEY);
     return saved === "calendar" ? "calendar" : "list";
   });
+  const [scope, setScope] = useState<Scope>(() => {
+    const saved = localStorage.getItem(SCOPE_STORAGE_KEY);
+    return saved === "summaries" ? "summaries" : "all";
+  });
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [summaryAggs, setSummaryAggs] = useState<Map<number, SummaryAggregate>>(
+    () => new Map(),
+  );
+  const [staffCostByType, setStaffCostByType] = useState<Map<string, number>>(
+    () => new Map(),
+  );
+  const { statuses, types, typeByCode } = useEnums();
+  const { ask } = useDialog();
 
   useEffect(() => {
     localStorage.setItem(VIEW_STORAGE_KEY, view);
   }, [view]);
 
+  useEffect(() => {
+    localStorage.setItem(SCOPE_STORAGE_KEY, scope);
+  }, [scope]);
+
   async function refresh() {
     setLoading(true);
-    const [evs, prods] = await Promise.all([listEvents(), listProducers()]);
+    const [evs, prods, aggs, staffRows] = await Promise.all([
+      listEvents(),
+      listProducers(),
+      listSummaryAggregates().catch(() => new Map<number, SummaryAggregate>()),
+      listAllEventTypeStaff().catch(() => []),
+    ]);
+    const staffMap = new Map<string, number>();
+    for (const r of staffRows) {
+      const key = `${r.event_type_code}|${r.sub_type ?? ""}`;
+      staffMap.set(key, (staffMap.get(key) ?? 0) + r.cost);
+    }
     setEvents(evs);
     setProducers(prods);
+    setSummaryAggs(aggs);
+    setStaffCostByType(staffMap);
     setLoading(false);
   }
 
@@ -101,8 +131,12 @@ export function EventsPage() {
   }, []);
 
   const filteredEvents = useMemo(
-    () => events.filter((e) => matches(filters, e)),
-    [events, filters],
+    () =>
+      events.filter((e) => {
+        if (scope === "summaries" && !e.has_summary) return false;
+        return matches(filters, e);
+      }),
+    [events, filters, scope],
   );
 
   async function resolveProducerId(name: string | null): Promise<number | null> {
@@ -117,10 +151,14 @@ export function EventsPage() {
     return {
       name: values.name,
       date: values.date,
+      start_time: values.start_time,
       type: values.type,
+      sub_type: values.sub_type,
       producer_id,
       status: values.status,
       deal: values.deal,
+      campaign: values.campaign,
+      campaign_amount: values.campaign_amount,
       ticket_link: values.ticket_link,
       notes: values.notes,
     };
@@ -142,7 +180,7 @@ export function EventsPage() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm("למחוק את האירוע? פעולה זו תמחק גם את המשמרות.")) return;
+    if (!(await ask("למחוק את האירוע?"))) return;
     await deleteEvent(id);
     await refresh();
   }
@@ -155,10 +193,14 @@ export function EventsPage() {
     await updateEvent(event.id, {
       name: event.name,
       date: event.date,
+      start_time: event.start_time,
       type: event.type,
+      sub_type: event.sub_type,
       producer_id: event.producer_id,
       status: next,
       deal: event.deal,
+      campaign: event.campaign,
+      campaign_amount: event.campaign_amount,
       ticket_link: event.ticket_link,
       notes: event.notes,
     });
@@ -177,7 +219,23 @@ export function EventsPage() {
   return (
     <>
       <div className="page-header">
-        <h1>אירועים</h1>
+        <div>
+          <h1 style={{ marginBottom: 8 }}>אירועים</h1>
+          <div className="view-toggle">
+            <button
+              className={scope === "all" ? "active" : ""}
+              onClick={() => setScope("all")}
+            >
+              הכל
+            </button>
+            <button
+              className={scope === "summaries" ? "active" : ""}
+              onClick={() => setScope("summaries")}
+            >
+              סיכומי אירועים
+            </button>
+          </div>
+        </div>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <div className="view-toggle">
             <button
@@ -204,11 +262,6 @@ export function EventsPage() {
           <div className="empty">טוען…</div>
         ) : showEmpty ? (
           <div className="empty">אין אירועים עדיין. לחצו על "אירוע חדש" כדי להתחיל.</div>
-        ) : view === "calendar" ? (
-          <EventsCalendar
-            events={filteredEvents}
-            onStatusChange={handleStatusChange}
-          />
         ) : (
           <>
             <div className="filter-bar">
@@ -227,9 +280,9 @@ export function EventsPage() {
                 }
               >
                 <option value="">כל הסטטוסים</option>
-                {EVENT_STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s}>
-                    {EVENT_STATUS_LABELS[s]}
+                {statuses.map((s) => (
+                  <option key={s.code} value={s.code}>
+                    {s.label}
                   </option>
                 ))}
               </select>
@@ -240,9 +293,9 @@ export function EventsPage() {
                 }
               >
                 <option value="">כל הסוגים</option>
-                {EVENT_TYPE_OPTIONS.map((t) => (
-                  <option key={t} value={t}>
-                    {EVENT_TYPE_LABELS[t]}
+                {types.map((t) => (
+                  <option key={t.code} value={t.code}>
+                    {t.label}
                   </option>
                 ))}
               </select>
@@ -286,17 +339,139 @@ export function EventsPage() {
               )}
             </div>
 
-            {showNoMatches ? (
+            {view === "calendar" ? (
+              <EventsCalendar
+                events={filteredEvents}
+                onStatusChange={handleStatusChange}
+              />
+            ) : showNoMatches ? (
               <div className="empty">אין תוצאות לסינון.</div>
-            ) : (
-              <table>
+            ) : scope === "summaries" ? (
+              <table className="centered">
                 <thead>
                   <tr>
                     <th>שם</th>
                     <th>תאריך</th>
+                    <th>סטטוס</th>
+                    <th>כרטיסים</th>
+                    <th>הכנסות כרטיסים</th>
+                    <th>דיל</th>
+                    <th>חלק המועדון מכרטיסים</th>
+                    <th>בר</th>
+                    <th>מונה</th>
+                    <th>סה"כ הכנסות למועדון</th>
+                    <th>הוצאות</th>
+                    <th>נטו למועדון</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredEvents.map((e) => {
+                    const a = summaryAggs.get(e.id);
+                    const ticketsRevenue = a?.tickets_revenue ?? 0;
+                    const presaleRevenue = a?.presale_revenue ?? 0;
+                    const boxOfficeRevenue = a?.box_office_revenue ?? 0;
+                    const presaleCommissions = a?.presale_commissions ?? 0;
+                    const ozenCommission = a?.ozen_commission ?? 0;
+                    const barTotal = a?.bar_total ?? 0;
+                    const dealPct = e.deal ?? 0;
+                    const ticketBase =
+                      presaleRevenue - presaleCommissions + boxOfficeRevenue;
+                    const clubTicketShare = ticketBase * (dealPct / 100);
+                    const clubTicketIncome = clubTicketShare + ozenCommission;
+                    const clubTotalRevenue = clubTicketIncome + barTotal;
+                    const staffCost = e.type
+                      ? staffCostByType.get(
+                          `${e.type}|${e.sub_type ?? ""}`,
+                        ) ?? 0
+                      : 0;
+                    const campaignPct = e.campaign ?? 0;
+                    const campaignAmount = e.campaign_amount ?? 0;
+                    const clubCampaignExpense =
+                      campaignAmount * (campaignPct / 100);
+                    const expenses = staffCost + clubCampaignExpense;
+                    const net = clubTotalRevenue - expenses;
+                    return (
+                      <tr key={e.id}>
+                        <td>
+                          <Link
+                            to={`/events/${e.id}/summary`}
+                            className="row-value"
+                            dir="auto"
+                          >
+                            {e.name}
+                          </Link>
+                        </td>
+                        <td
+                          className="muted"
+                          dir="ltr"
+                          style={{ textAlign: "start" }}
+                        >
+                          {formatDate(e.date)}
+                        </td>
+                        <td>
+                          <InlineStatusSelect
+                            value={e.status}
+                            onChange={(next) => handleStatusChange(e, next)}
+                          />
+                        </td>
+                        <td dir="ltr" style={{ textAlign: "start" }}>
+                          {a?.tickets_count ?? 0}
+                        </td>
+                        <td dir="ltr" style={{ textAlign: "start" }}>
+                          {ticketsRevenue.toLocaleString("he-IL")} ₪
+                        </td>
+                        <td dir="ltr" style={{ textAlign: "start" }}>
+                          {e.deal != null ? `${e.deal}%` : "—"}
+                        </td>
+                        <td dir="ltr" style={{ textAlign: "start" }}>
+                          {clubTicketIncome.toLocaleString("he-IL", {
+                            maximumFractionDigits: 2,
+                          })}{" "}
+                          ₪
+                        </td>
+                        <td dir="ltr" style={{ textAlign: "start" }}>
+                          {barTotal.toLocaleString("he-IL")} ₪
+                        </td>
+                        <td dir="ltr" style={{ textAlign: "start" }}>
+                          {a?.counter ?? "—"}
+                        </td>
+                        <td
+                          dir="ltr"
+                          style={{ textAlign: "start", fontWeight: 600 }}
+                        >
+                          {clubTotalRevenue.toLocaleString("he-IL", {
+                            maximumFractionDigits: 2,
+                          })}{" "}
+                          ₪
+                        </td>
+                        <td dir="ltr" style={{ textAlign: "start" }}>
+                          {expenses.toLocaleString("he-IL")} ₪
+                        </td>
+                        <td
+                          dir="ltr"
+                          style={{ textAlign: "start", fontWeight: 600 }}
+                        >
+                          {net.toLocaleString("he-IL", {
+                            maximumFractionDigits: 2,
+                          })}{" "}
+                          ₪
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <table className="centered">
+                <thead>
+                  <tr>
+                    <th>שם</th>
+                    <th>תאריך</th>
+                    <th>שעה</th>
                     <th>סוג</th>
                     <th>מפיק</th>
                     <th>סטטוס</th>
+                    <th>הערות</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -312,16 +487,38 @@ export function EventsPage() {
                           {e.name}
                         </Link>
                       </td>
-                      <td className="muted">{formatDate(e.date)}</td>
-                      <td>{eventTypeLabel(e.type)}</td>
-                      <td className="row-value" dir="auto">
-                        {e.producer_name ?? "—"}
+                      <td className="muted" dir="ltr" style={{ textAlign: "start" }}>
+                        {formatDate(e.date)}
+                      </td>
+                      <td className="muted" dir="ltr" style={{ textAlign: "start" }}>
+                        {e.start_time ? e.start_time.slice(0, 5) : "—"}
+                      </td>
+                      <td>{e.type ? typeByCode[e.type]?.label ?? e.type : "—"}</td>
+                      <td>
+                        {e.producer_name && e.producer_id != null ? (
+                          <Link
+                            to={`/producers/${e.producer_id}`}
+                            className="row-value"
+                            dir="auto"
+                          >
+                            {e.producer_name}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td>
                         <InlineStatusSelect
                           value={e.status}
                           onChange={(next) => handleStatusChange(e, next)}
                         />
+                      </td>
+                      <td
+                        className="row-value cell-truncate"
+                        dir="auto"
+                        title={e.notes ?? undefined}
+                      >
+                        {e.notes ?? "—"}
                       </td>
                       <td style={{ textAlign: "end" }}>
                         <button

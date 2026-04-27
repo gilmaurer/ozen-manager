@@ -1,45 +1,34 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import type {
-  EventWithProducer,
-  ShiftWithStaff,
-  StaffRow,
-} from "../../db/types";
-import { getEvent } from "./eventsRepo";
-import { listStaff } from "../staff/staffRepo";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ensureSummaryForEvent } from "../summaries/summariesRepo";
+import type { EventWithProducer, ProducerRow } from "../../db/types";
+import { getEvent, updateEvent } from "./eventsRepo";
 import {
-  createShift,
-  deleteShift,
-  listShiftsForEvent,
-  ShiftInput,
-  updateShift,
-} from "../shifts/shiftsRepo";
-import { formatDate, formatTime } from "../../utils/format";
+  listProducers,
+  resolveOrCreateProducerByName,
+} from "../producers/producersRepo";
+import { formatDate } from "../../utils/format";
 import { StatusBadge } from "../../components/StatusBadge";
 import { Modal } from "../../components/Modal";
-import { ShiftForm } from "../shifts/ShiftForm";
-import { eventTypeLabel } from "./labels";
+import { EventForm, EventFormValues } from "./EventForm";
+import { useEnums } from "../../services/enums";
+import { hasSubTypes, subTypeLabel } from "./subTypes";
 
 export function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const eventId = Number(id);
+  const navigate = useNavigate();
+  const { typeByCode } = useEnums();
   const [event, setEvent] = useState<EventWithProducer | null>(null);
-  const [shifts, setShifts] = useState<ShiftWithStaff[]>([]);
-  const [staff, setStaff] = useState<StaffRow[]>([]);
+  const [producers, setProducers] = useState<ProducerRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<ShiftWithStaff | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const [e, s, st] = await Promise.all([
-      getEvent(eventId),
-      listShiftsForEvent(eventId),
-      listStaff(),
-    ]);
+    const [e, prods] = await Promise.all([getEvent(eventId), listProducers()]);
     setEvent(e);
-    setShifts(s);
-    setStaff(st);
+    setProducers(prods);
     setLoading(false);
   }, [eventId]);
 
@@ -47,22 +36,34 @@ export function EventDetailPage() {
     refresh();
   }, [refresh]);
 
-  async function handleCreate(input: ShiftInput) {
-    await createShift(input);
-    setCreating(false);
-    await refresh();
+  async function handleOpenSummary() {
+    if (!event) return;
+    if (!event.has_summary) {
+      await ensureSummaryForEvent(eventId);
+    }
+    navigate(`/events/${eventId}/summary`);
   }
 
-  async function handleUpdate(input: ShiftInput) {
-    if (!editing) return;
-    await updateShift(editing.id, input);
-    setEditing(null);
-    await refresh();
-  }
-
-  async function handleDelete(id: number) {
-    if (!confirm("למחוק את המשמרת?")) return;
-    await deleteShift(id);
+  async function handleUpdate(values: EventFormValues) {
+    if (!event) return;
+    const producer_id = values.producer_name
+      ? await resolveOrCreateProducerByName(values.producer_name)
+      : null;
+    await updateEvent(event.id, {
+      name: values.name,
+      date: values.date,
+      start_time: values.start_time,
+      type: values.type,
+      sub_type: values.sub_type,
+      producer_id,
+      status: values.status,
+      deal: values.deal,
+      campaign: values.campaign,
+      campaign_amount: values.campaign_amount,
+      ticket_link: values.ticket_link,
+      notes: values.notes,
+    });
+    setEditing(false);
     await refresh();
   }
 
@@ -88,123 +89,104 @@ export function EventDetailPage() {
             {formatDate(event.date)} · <StatusBadge status={event.status} />
           </div>
         </div>
-      </div>
-
-      {(event.type || event.producer_name || event.deal || event.ticket_link || event.notes) && (
-        <div className="card" style={{ marginBottom: 16 }}>
-          {event.type && (
-            <div style={{ marginBottom: 8 }}>
-              <span className="muted">סוג: </span>
-              <span>{eventTypeLabel(event.type)}</span>
-            </div>
-          )}
-          {event.producer_name && (
-            <div style={{ marginBottom: 8 }}>
-              <span className="muted">מפיק: </span>
-              <Link
-                to={`/producers/${event.producer_id}`}
-                className="row-value"
-                dir="auto"
-              >
-                {event.producer_name}
-              </Link>
-            </div>
-          )}
-          {event.deal && (
-            <div style={{ marginBottom: 8 }}>
-              <span className="muted">דיל: </span>
-              <span className="row-value" dir="auto">{event.deal}</span>
-            </div>
-          )}
-          {event.ticket_link && (
-            <div style={{ marginBottom: 8 }}>
-              <span className="muted">קישור לכרטיסים: </span>
-              <a
-                href={event.ticket_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                dir="ltr"
-              >
-                {event.ticket_link}
-              </a>
-            </div>
-          )}
-          {event.notes && (
-            <div>
-              <span className="muted">הערות: </span>
-              <span className="row-value" dir="auto">{event.notes}</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="card">
-        <div className="page-header" style={{ marginBottom: 12 }}>
-          <h2>משמרות לאירוע</h2>
-          <button className="btn btn-sm" onClick={() => setCreating(true)}>
-            + משמרת חדשה
+        <div style={{ display: "flex", gap: 8 }}>
+          <button className="btn btn-secondary" onClick={() => setEditing(true)}>
+            עריכה
+          </button>
+          <button className="btn" onClick={handleOpenSummary}>
+            {event.has_summary ? "פתיחת סיכום" : "יצירת סיכום"}
           </button>
         </div>
-
-        {shifts.length === 0 ? (
-          <div className="empty">אין משמרות משויכות לאירוע זה.</div>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>עובד/ת</th>
-                <th>תפקיד</th>
-                <th>התחלה</th>
-                <th>סיום</th>
-                <th>הערות</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {shifts.map((s) => (
-                <tr key={s.id}>
-                  <td className="row-value" dir="auto">{s.staff_name ?? "—"}</td>
-                  <td className="row-value" dir="auto">{s.position ?? "—"}</td>
-                  <td className="muted">{formatTime(s.starts_at)}</td>
-                  <td className="muted">{formatTime(s.ends_at)}</td>
-                  <td className="row-value" dir="auto">{s.notes ?? "—"}</td>
-                  <td style={{ textAlign: "end" }}>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => setEditing(s)}
-                    >
-                      עריכה
-                    </button>{" "}
-                    <button
-                      className="btn btn-danger btn-sm"
-                      onClick={() => handleDelete(s.id)}
-                    >
-                      מחיקה
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
       </div>
 
-      <Modal open={creating} title="משמרת חדשה" onClose={() => setCreating(false)}>
-        <ShiftForm
-          eventId={eventId}
-          staff={staff}
-          onSubmit={handleCreate}
-          onCancel={() => setCreating(false)}
-        />
-      </Modal>
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div className="detail-row">
+          <span className="muted">שם: </span>
+          <span className="row-value" dir="auto">{event.name}</span>
+        </div>
+        <div className="detail-row">
+          <span className="muted">תאריך: </span>
+          <span>{formatDate(event.date)}</span>
+        </div>
+        <div className="detail-row">
+          <span className="muted">שעה: </span>
+          <span dir="ltr">{event.start_time ? event.start_time.slice(0, 5) : "—"}</span>
+        </div>
+        <div className="detail-row">
+          <span className="muted">סוג: </span>
+          <span>{event.type ? typeByCode[event.type]?.label ?? event.type : "—"}</span>
+        </div>
+        {hasSubTypes(event.type) && (
+          <div className="detail-row">
+            <span className="muted">תת-סוג: </span>
+            <span>{subTypeLabel(event.type, event.sub_type) ?? "—"}</span>
+          </div>
+        )}
+        <div className="detail-row">
+          <span className="muted">מפיק: </span>
+          {event.producer_name ? (
+            <Link
+              to={`/producers/${event.producer_id}`}
+              className="row-value"
+              dir="auto"
+            >
+              {event.producer_name}
+            </Link>
+          ) : (
+            <span>—</span>
+          )}
+        </div>
+        <div className="detail-row">
+          <span className="muted">סטטוס: </span>
+          <StatusBadge status={event.status} />
+        </div>
+        <div className="detail-row">
+          <span className="muted">דיל (% למועדון): </span>
+          <span dir="ltr">{event.deal != null ? `${event.deal}%` : "—"}</span>
+        </div>
+        <div className="detail-row">
+          <span className="muted">קמפיין — סכום: </span>
+          <span dir="ltr">
+            {event.campaign_amount != null
+              ? `${event.campaign_amount.toLocaleString("he-IL", {
+                  maximumFractionDigits: 2,
+                })} ₪`
+              : "—"}
+          </span>
+        </div>
+        <div className="detail-row">
+          <span className="muted">קמפיין (% למועדון): </span>
+          <span dir="ltr">
+            {event.campaign != null ? `${event.campaign}%` : "—"}
+          </span>
+        </div>
+        <div className="detail-row">
+          <span className="muted">קישור לכרטיסים: </span>
+          {event.ticket_link ? (
+            <a
+              href={event.ticket_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              dir="ltr"
+            >
+              {event.ticket_link}
+            </a>
+          ) : (
+            <span>—</span>
+          )}
+        </div>
+        <div className="detail-row">
+          <span className="muted">הערות: </span>
+          <span className="row-value" dir="auto">{event.notes ?? "—"}</span>
+        </div>
+      </div>
 
-      <Modal open={!!editing} title="עריכת משמרת" onClose={() => setEditing(null)}>
-        <ShiftForm
-          eventId={eventId}
-          staff={staff}
-          initial={editing}
+      <Modal open={editing} title="עריכת אירוע" onClose={() => setEditing(false)}>
+        <EventForm
+          initial={event}
+          producers={producers}
           onSubmit={handleUpdate}
-          onCancel={() => setEditing(null)}
+          onCancel={() => setEditing(false)}
         />
       </Modal>
     </>
