@@ -13,6 +13,7 @@ import { ProducersPage } from "./features/producers/ProducersPage";
 import { ProducerDetailPage } from "./features/producers/ProducerDetailPage";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { EventSummaryPage } from "./features/summaries/EventSummaryPage";
+import { PaymentsPage } from "./features/payments/PaymentsPage";
 import { UpdaterProvider } from "./features/updates/UpdaterProvider";
 import { UpdateBanner } from "./features/updates/UpdateBanner";
 import { UpdateCheckButton } from "./features/updates/UpdateCheckButton";
@@ -71,6 +72,9 @@ function Sidebar() {
       <NavLink to="/events" className="nav-link">
         אירועים
       </NavLink>
+      <NavLink to="/payments" className="nav-link">
+        תשלומים
+      </NavLink>
       <NavLink to="/producers" className="nav-link">
         מפיקים
       </NavLink>
@@ -119,6 +123,7 @@ export default function App() {
                     <Route path="/events" element={<EventsPage />} />
                     <Route path="/events/:id" element={<EventDetailPage />} />
                     <Route path="/events/:id/summary" element={<EventSummaryPage />} />
+                    <Route path="/payments" element={<PaymentsPage />} />
                     <Route path="/producers" element={<ProducersPage />} />
                     <Route path="/producers/:id" element={<ProducerDetailPage />} />
                     <Route path="/settings" element={<AdminGuardedSettings />} />

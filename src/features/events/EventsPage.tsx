@@ -12,6 +12,7 @@ import {
   EventInput,
   listEvents,
   updateEvent,
+  updateEventStatus,
 } from "./eventsRepo";
 import {
   listProducers,
@@ -155,6 +156,7 @@ export function EventsPage() {
   function toEventInput(
     values: EventFormValues,
     producer_id: number | null,
+    invoice_url: string | null,
   ): EventInput {
     return {
       name: values.name,
@@ -169,13 +171,14 @@ export function EventsPage() {
       deal_fit_price: values.deal_fit_price,
       campaign: values.campaign,
       campaign_amount: values.campaign_amount,
+      invoice_url,
       notes: values.notes,
     };
   }
 
   async function handleCreate(values: EventFormValues) {
     const producer_id = await resolveProducerId(values.producer_name);
-    await createEvent(toEventInput(values, producer_id));
+    await createEvent(toEventInput(values, producer_id, null));
     setCreating(false);
     await refresh();
   }
@@ -183,7 +186,10 @@ export function EventsPage() {
   async function handleUpdate(values: EventFormValues) {
     if (!editing) return;
     const producer_id = await resolveProducerId(values.producer_name);
-    await updateEvent(editing.id, toEventInput(values, producer_id));
+    await updateEvent(
+      editing.id,
+      toEventInput(values, producer_id, editing.invoice_url),
+    );
     setEditing(null);
     await refresh();
   }
@@ -199,21 +205,7 @@ export function EventsPage() {
     next: EventStatus,
   ) {
     if (event.status === next) return;
-    await updateEvent(event.id, {
-      name: event.name,
-      date: event.date,
-      start_time: event.start_time,
-      type: event.type,
-      sub_type: event.sub_type,
-      producer_id: event.producer_id,
-      status: next,
-      deal_type: event.deal_type,
-      deal: event.deal,
-      deal_fit_price: event.deal_fit_price,
-      campaign: event.campaign,
-      campaign_amount: event.campaign_amount,
-      notes: event.notes,
-    });
+    await updateEventStatus(event.id, next);
     await refresh();
   }
 

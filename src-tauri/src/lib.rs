@@ -1,5 +1,7 @@
 mod auth_loopback;
 mod drive_backup;
+mod drive_client;
+mod drive_upload;
 
 #[tauri::command]
 fn write_file_bytes(path: String, bytes: Vec<u8>) -> Result<(), String> {
@@ -14,6 +16,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             drive_backup::drive_backup,
+            drive_upload::upload_invoice_to_drive,
             auth_loopback::start_auth_listener,
             write_file_bytes,
         ])

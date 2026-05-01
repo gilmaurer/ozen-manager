@@ -92,7 +92,34 @@ export interface EventInput {
   deal_fit_price: number | null;
   campaign: number | null;
   campaign_amount: number | null;
+  invoice_url: string | null;
   notes: string | null;
+}
+
+export async function updateEventStatus(
+  id: number,
+  status: EventStatus,
+): Promise<void> {
+  return withRetry(async () => {
+    const { error } = await supabase
+      .from("events")
+      .update({ status })
+      .eq("id", id);
+    if (error) throw error;
+  });
+}
+
+export async function updateEventInvoiceUrl(
+  id: number,
+  invoice_url: string | null,
+): Promise<void> {
+  return withRetry(async () => {
+    const { error } = await supabase
+      .from("events")
+      .update({ invoice_url })
+      .eq("id", id);
+    if (error) throw error;
+  });
 }
 
 export async function createEvent(input: EventInput): Promise<number> {

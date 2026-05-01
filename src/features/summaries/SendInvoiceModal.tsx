@@ -16,6 +16,7 @@ import {
   computeInvoice,
   generateProducerInvoicePdf,
 } from "./producerInvoice";
+import { updateEventStatus } from "../events/eventsRepo";
 
 interface Props {
   open: boolean;
@@ -107,6 +108,13 @@ export function SendInvoiceModal({
         pdfFilename,
         accessToken: sender.providerToken,
       });
+      // Auto-advance event status to waiting_invoice. Non-blocking:
+      // the email already went out, so a stale status shouldn't hide that.
+      try {
+        await updateEventStatus(event.id, "waiting_invoice");
+      } catch (statusErr) {
+        console.warn("failed to flip status to waiting_invoice", statusErr);
+      }
       onSent();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

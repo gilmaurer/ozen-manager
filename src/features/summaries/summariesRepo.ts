@@ -152,6 +152,10 @@ export interface SummaryAggregate {
   ozen_commission: number;
   bar_total: number;
   counter: number | null;
+  acum: number;
+  stereo_record: number;
+  channels_record: number;
+  lightman: number;
 }
 
 export async function listSummaryAggregates(): Promise<
@@ -216,6 +220,10 @@ export async function listSummaryAggregates(): Promise<
       bar_total:
         (s.bar_cash ?? 0) + (s.bar_credit ?? 0) - (s.bar_expenses ?? 0),
       counter: s.counter,
+      acum: s.acum ?? 0,
+      stereo_record: s.stereo_record ?? 0,
+      channels_record: s.channels_record ?? 0,
+      lightman: s.lightman ?? 0,
     });
   }
   return byEventId;

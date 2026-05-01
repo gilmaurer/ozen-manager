@@ -63,6 +63,7 @@ export function EventDetailPage() {
       deal_fit_price: values.deal_fit_price,
       campaign: values.campaign,
       campaign_amount: values.campaign_amount,
+      invoice_url: event.invoice_url,
       notes: values.notes,
     });
     setEditing(false);
