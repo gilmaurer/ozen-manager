@@ -41,7 +41,8 @@ export function LoginPage() {
         options: {
           redirectTo,
           skipBrowserRedirect: true,
-          scopes: "https://www.googleapis.com/auth/gmail.send",
+          scopes:
+            "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/drive.file",
           queryParams: {
             access_type: "offline",
             prompt: "consent",

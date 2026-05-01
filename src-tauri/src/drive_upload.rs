@@ -1,10 +1,13 @@
+// Uploads a producer invoice file to the shared Google Drive folder using
+// the *signed-in user's* OAuth access token (drive.file scope). Previous
+// service-account approach failed because service accounts without a
+// Shared Drive have no storage quota.
+
 use reqwest::multipart::{Form, Part};
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::drive_client;
-
-// Dedicated folder where producer invoices are uploaded.
+// Shared folder. The signed-in user must have at least Editor on it.
 const INVOICE_FOLDER_ID: &str = "1uKHhbLZwxrHqx7dMXi31nyH53xkXrZHV";
 
 #[derive(Deserialize)]
@@ -42,10 +45,11 @@ fn mime_from_ext(path: &str) -> &'static str {
 pub async fn upload_invoice_to_drive(
     file_path: String,
     display_name: String,
+    access_token: String,
 ) -> Result<String, String> {
-    let cfg = drive_client::read_config()?
-        .ok_or_else(|| "drive service account not configured".to_string())?;
-    let token = drive_client::get_access_token(&cfg.service_account).await?;
+    if access_token.is_empty() {
+        return Err("missing Google access token; sign out and sign in again".to_string());
+    }
 
     let bytes = std::fs::read(&file_path)
         .map_err(|e| format!("could not read {}: {}", file_path, e))?;
@@ -72,7 +76,7 @@ pub async fn upload_invoice_to_drive(
         .post(
             "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink",
         )
-        .bearer_auth(&token)
+        .bearer_auth(&access_token)
         .multipart(form)
         .send()
         .await
