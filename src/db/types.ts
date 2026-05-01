@@ -1,5 +1,6 @@
 export type EventStatus = string;
 export type EventType = string;
+export type DealType = "split" | "fit_price";
 
 export interface EventRow {
   id: number;
@@ -10,10 +11,11 @@ export interface EventRow {
   sub_type: string | null;
   producer_id: number | null;
   status: EventStatus;
+  deal_type: DealType;
   deal: number | null;
+  deal_fit_price: number | null;
   campaign: number | null;
   campaign_amount: number | null;
-  ticket_link: string | null;
   notes: string | null;
   created_at: string;
 }
@@ -39,6 +41,10 @@ export interface EventSummaryRow {
   bar_cash: number;
   bar_credit: number;
   bar_expenses: number;
+  acum: number;
+  stereo_record: number;
+  channels_record: number;
+  lightman: number;
   created_at: string;
   updated_at: string;
 }
@@ -57,6 +63,7 @@ export interface ProducerRow {
   id: number;
   name: string;
   phone: string | null;
+  email: string | null;
   created_at: string;
 }
 

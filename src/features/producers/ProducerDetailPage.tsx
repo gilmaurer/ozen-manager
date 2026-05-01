@@ -86,6 +86,9 @@ export function ProducerDetailPage() {
           <div className="muted" style={{ marginTop: 4 }} dir="ltr">
             {producer.phone ?? "—"}
           </div>
+          <div className="muted" style={{ marginTop: 2 }} dir="ltr">
+            {producer.email ?? "—"}
+          </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button

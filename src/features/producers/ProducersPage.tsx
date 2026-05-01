@@ -74,6 +74,7 @@ export function ProducersPage() {
               <tr>
                 <th>שם</th>
                 <th>טלפון</th>
+                <th>מייל</th>
                 <th>מספר אירועים</th>
                 <th></th>
               </tr>
@@ -92,6 +93,9 @@ export function ProducersPage() {
                   </td>
                   <td dir="ltr" style={{ textAlign: "start" }}>
                     {p.phone ?? "—"}
+                  </td>
+                  <td dir="ltr" style={{ textAlign: "start" }}>
+                    {p.email ?? "—"}
                   </td>
                   <td className="muted">{p.event_count}</td>
                   <td style={{ textAlign: "end" }}>

@@ -7,6 +7,7 @@ export type ProducerWithCount = ProducerRow & { event_count: number };
 export interface ProducerInput {
   name: string;
   phone: string | null;
+  email: string | null;
 }
 
 export async function listProducers(): Promise<ProducerWithCount[]> {
@@ -39,7 +40,11 @@ export async function createProducer(input: ProducerInput): Promise<number> {
   return withRetry(async () => {
     const { data, error } = await supabase
       .from("producers")
-      .insert({ name: input.name.trim(), phone: input.phone })
+      .insert({
+        name: input.name.trim(),
+        phone: input.phone,
+        email: input.email,
+      })
       .select("id")
       .single();
     if (error) throw error;
@@ -54,7 +59,11 @@ export async function updateProducer(
   return withRetry(async () => {
     const { error } = await supabase
       .from("producers")
-      .update({ name: input.name.trim(), phone: input.phone })
+      .update({
+        name: input.name.trim(),
+        phone: input.phone,
+        email: input.email,
+      })
       .eq("id", id);
     if (error) throw error;
   });
@@ -99,5 +108,5 @@ export async function resolveOrCreateProducerByName(
 ): Promise<number> {
   const existing = await findProducerByName(name);
   if (existing) return existing.id;
-  return createProducer({ name, phone: null });
+  return createProducer({ name, phone: null, email: null });
 }

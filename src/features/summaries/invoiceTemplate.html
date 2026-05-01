@@ -1,0 +1,186 @@
+<style>
+  .invoice {
+    width: 794px;
+    min-height: 1123px;
+    box-sizing: border-box;
+    padding: 40px 48px;
+    background: #ffffff;
+    color: #111111;
+    font-family: 'Helvetica Neue', 'Arial', 'Segoe UI', sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .invoice * { box-sizing: border-box; }
+  .invoice .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #111;
+    margin-bottom: 24px;
+  }
+  .invoice .logo { height: 72px; width: auto; display: block; }
+  .invoice .header-title {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .invoice .meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+  }
+  .invoice .meta-table td {
+    padding: 6px 10px;
+    border: 1px solid #d0d0d0;
+    font-size: 14px;
+  }
+  .invoice .meta-label {
+    background: #f4f4f4;
+    font-weight: 600;
+    width: 110px;
+    white-space: nowrap;
+  }
+  .invoice .meta-value { background: #ffffff; }
+  .invoice .section-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 20px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #111;
+  }
+  .invoice .source-block { margin-bottom: 14px; }
+  .invoice .source-title {
+    font-size: 14px;
+    font-weight: 700;
+    background: #eef2f7;
+    padding: 6px 10px;
+    border: 1px solid #d0d0d0;
+    border-bottom: none;
+  }
+  .invoice .tier-table,
+  .invoice .totals-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .invoice .tier-table td,
+  .invoice .totals-table td {
+    padding: 6px 10px;
+    border: 1px solid #d0d0d0;
+    vertical-align: middle;
+  }
+  .invoice .tier-table .amount,
+  .invoice .totals-table .amount {
+    width: 160px;
+    text-align: left;
+    direction: ltr;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .invoice .commission-row td { background: #fafafa; }
+  .invoice .source-net-row td {
+    background: #f0f0f0;
+    font-weight: 700;
+  }
+  .invoice .totals-table { margin-top: 16px; }
+  .invoice .section-header-row td {
+    background: #eef2f7;
+    font-weight: 700;
+  }
+  .invoice .subtotal-row td {
+    background: #f0f0f0;
+    font-weight: 700;
+  }
+  .invoice .grand-total-table {
+    margin-top: 20px;
+    border: 2px solid #111;
+  }
+  .invoice .grand-total-row td {
+    background: #111;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 10px;
+  }
+  .invoice .subdued-row td {
+    background: #ffffff;
+    color: #333;
+    font-size: 13px;
+  }
+  .invoice .neg { color: #9a1c1c; }
+  .invoice .empty {
+    padding: 10px;
+    color: #666;
+    font-style: italic;
+    border: 1px dashed #ccc;
+  }
+  .invoice .footer {
+    margin-top: 28px;
+    padding-top: 12px;
+    border-top: 1px solid #ccc;
+    font-size: 12px;
+    color: #555;
+    text-align: center;
+  }
+</style>
+<div class="invoice" dir="rtl">
+  <div class="header">
+    {{LOGO}}
+    <div class="header-title">סיכום אירוע</div>
+  </div>
+
+  <table class="meta-table">
+    <tbody>
+      <tr>
+        <td class="meta-label">שם המופע</td>
+        <td class="meta-value">{{EVENT_NAME}}</td>
+        <td class="meta-label">יום</td>
+        <td class="meta-value">{{DAY_OF_WEEK}}</td>
+      </tr>
+      <tr>
+        <td class="meta-label">תאריך</td>
+        <td class="meta-value" colspan="3">{{DATE}}</td>
+      </tr>
+      {{PRODUCER_ROW}}
+    </tbody>
+  </table>
+
+  <div class="section-title">מכירה מוקדמת</div>
+  {{PRESALE_BLOCKS}}
+
+  {{BOX_BLOCK}}
+
+  <table class="totals-table">
+    <tbody>
+      <tr>
+        <td>סה"כ לחלוקה</td>
+        <td class="amount">{{TICKET_BASE}}</td>
+      </tr>
+      {{CLUB_SHARE_ROW}}
+      <tr class="subtotal-row">
+        <td>חלק המפיק מהכרטיסים</td>
+        <td class="amount">{{PRODUCER_TICKET_SHARE}}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  {{DEDUCTIONS_HTML}}
+
+  <table class="totals-table grand-total-table">
+    <tbody>
+      <tr class="grand-total-row">
+        <td>סה"כ תשלום לאמן (כולל מע"מ)</td>
+        <td class="amount">{{PRODUCER_NET}}</td>
+      </tr>
+      <tr class="subdued-row">
+        <td>לא כולל מע"מ ({{VAT_PCT}}%)</td>
+        <td class="amount">{{PRODUCER_NET_EX_VAT}}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    אנא העבירו במייל חוזר דרישת תשלום / חשבונית עבור האוזן השלישית לייב בע"מ ח.פ 514165398
+  </div>
+</div>

@@ -11,6 +11,7 @@ interface Props {
 export function ProducerForm({ initial, onSubmit, onCancel }: Props) {
   const [name, setName] = useState(initial?.name ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
+  const [email, setEmail] = useState(initial?.email ?? "");
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
@@ -21,6 +22,7 @@ export function ProducerForm({ initial, onSubmit, onCancel }: Props) {
       await onSubmit({
         name: name.trim(),
         phone: phone.trim() || null,
+        email: email.trim() || null,
       });
     } finally {
       setSubmitting(false);
@@ -50,6 +52,19 @@ export function ProducerForm({ initial, onSubmit, onCancel }: Props) {
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             placeholder="050-0000000"
+          />
+        </div>
+      </div>
+
+      <div className="form-row single">
+        <div>
+          <label>מייל</label>
+          <input
+            type="email"
+            dir="ltr"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="name@example.com"
           />
         </div>
       </div>

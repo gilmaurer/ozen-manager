@@ -22,6 +22,8 @@ import { Modal } from "../../components/Modal";
 import { EventForm, EventFormValues } from "./EventForm";
 import { EventsCalendar } from "./EventsCalendar";
 import { InlineStatusSelect } from "./InlineStatusSelect";
+import { MONTH_FMT, monthBounds, startOfMonth } from "./monthNav";
+import { clubTicketShareOf, dealLabel } from "./dealCalc";
 import { useEnums } from "../../services/enums";
 import {
   listSummaryAggregates,
@@ -89,6 +91,9 @@ export function EventsPage() {
     return saved === "summaries" ? "summaries" : "all";
   });
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [monthCursor, setMonthCursor] = useState<Date>(() =>
+    startOfMonth(new Date()),
+  );
   const [summaryAggs, setSummaryAggs] = useState<Map<number, SummaryAggregate>>(
     () => new Map(),
   );
@@ -130,14 +135,17 @@ export function EventsPage() {
     refresh();
   }, []);
 
-  const filteredEvents = useMemo(
-    () =>
-      events.filter((e) => {
-        if (scope === "summaries" && !e.has_summary) return false;
-        return matches(filters, e);
-      }),
-    [events, filters, scope],
-  );
+  const filteredEvents = useMemo(() => {
+    const applyMonth =
+      view === "list" && filters.from === "" && filters.to === "";
+    const { start, end } = monthBounds(monthCursor);
+    return events.filter((e) => {
+      if (scope === "summaries" && !e.has_summary) return false;
+      if (!matches(filters, e)) return false;
+      if (applyMonth && (e.date < start || e.date > end)) return false;
+      return true;
+    });
+  }, [events, filters, scope, view, monthCursor]);
 
   async function resolveProducerId(name: string | null): Promise<number | null> {
     if (!name) return null;
@@ -156,10 +164,11 @@ export function EventsPage() {
       sub_type: values.sub_type,
       producer_id,
       status: values.status,
+      deal_type: values.deal_type,
       deal: values.deal,
+      deal_fit_price: values.deal_fit_price,
       campaign: values.campaign,
       campaign_amount: values.campaign_amount,
-      ticket_link: values.ticket_link,
       notes: values.notes,
     };
   }
@@ -198,10 +207,11 @@ export function EventsPage() {
       sub_type: event.sub_type,
       producer_id: event.producer_id,
       status: next,
+      deal_type: event.deal_type,
       deal: event.deal,
+      deal_fit_price: event.deal_fit_price,
       campaign: event.campaign,
       campaign_amount: event.campaign_amount,
-      ticket_link: event.ticket_link,
       notes: event.notes,
     });
     await refresh();
@@ -264,6 +274,60 @@ export function EventsPage() {
           <div className="empty">אין אירועים עדיין. לחצו על "אירוע חדש" כדי להתחיל.</div>
         ) : (
           <>
+            {view === "list" && (
+              <div
+                className="calendar-header"
+                style={{ marginBottom: 12 }}
+              >
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() =>
+                      setMonthCursor(
+                        new Date(
+                          monthCursor.getFullYear(),
+                          monthCursor.getMonth() + 1,
+                          1,
+                        ),
+                      )
+                    }
+                  >
+                    ›
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setMonthCursor(startOfMonth(new Date()))}
+                  >
+                    היום
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() =>
+                      setMonthCursor(
+                        new Date(
+                          monthCursor.getFullYear(),
+                          monthCursor.getMonth() - 1,
+                          1,
+                        ),
+                      )
+                    }
+                  >
+                    ‹
+                  </button>
+                </div>
+                <div className="month-label">
+                  {MONTH_FMT.format(monthCursor)}
+                  {(filters.from !== "" || filters.to !== "") && (
+                    <span
+                      className="muted"
+                      style={{ fontSize: 13, marginInlineStart: 8 }}
+                    >
+                      (סינון תאריכים פעיל)
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="filter-bar">
               <input
                 className="filter-search"
@@ -373,10 +437,9 @@ export function EventsPage() {
                     const presaleCommissions = a?.presale_commissions ?? 0;
                     const ozenCommission = a?.ozen_commission ?? 0;
                     const barTotal = a?.bar_total ?? 0;
-                    const dealPct = e.deal ?? 0;
                     const ticketBase =
                       presaleRevenue - presaleCommissions + boxOfficeRevenue;
-                    const clubTicketShare = ticketBase * (dealPct / 100);
+                    const clubTicketShare = clubTicketShareOf(e, ticketBase);
                     const clubTicketIncome = clubTicketShare + ozenCommission;
                     const clubTotalRevenue = clubTicketIncome + barTotal;
                     const staffCost = e.type
@@ -421,7 +484,7 @@ export function EventsPage() {
                           {ticketsRevenue.toLocaleString("he-IL")} ₪
                         </td>
                         <td dir="ltr" style={{ textAlign: "start" }}>
-                          {e.deal != null ? `${e.deal}%` : "—"}
+                          {dealLabel(e)}
                         </td>
                         <td dir="ltr" style={{ textAlign: "start" }}>
                           {clubTicketIncome.toLocaleString("he-IL", {

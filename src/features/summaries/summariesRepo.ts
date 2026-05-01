@@ -4,6 +4,7 @@ import { withRetry } from "../../services/network";
 
 export const OZEN_SOURCE = "אתר האוזן";
 export const OZEN_COMMISSION_RATE = 0.06;
+export const VAT_RATE = 0.18;
 
 export function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -48,6 +49,10 @@ export interface SummaryPatch {
   bar_cash?: number;
   bar_credit?: number;
   bar_expenses?: number;
+  acum?: number;
+  stereo_record?: number;
+  channels_record?: number;
+  lightman?: number;
 }
 
 export async function updateSummary(

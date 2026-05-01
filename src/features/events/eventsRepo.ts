@@ -1,4 +1,5 @@
 import type {
+  DealType,
   EventStatus,
   EventType,
   EventWithProducer,
@@ -86,10 +87,11 @@ export interface EventInput {
   sub_type: string | null;
   producer_id: number | null;
   status: EventStatus;
+  deal_type: DealType;
   deal: number | null;
+  deal_fit_price: number | null;
   campaign: number | null;
   campaign_amount: number | null;
-  ticket_link: string | null;
   notes: string | null;
 }
 

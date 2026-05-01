@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import type {
+  DealType,
   EventStatus,
   EventType,
   EventWithProducer,
@@ -16,10 +17,11 @@ export interface EventFormValues {
   sub_type: string | null;
   producer_name: string | null;
   status: EventStatus;
+  deal_type: DealType;
   deal: number | null;
+  deal_fit_price: number | null;
   campaign: number | null;
   campaign_amount: number | null;
-  ticket_link: string | null;
   notes: string | null;
 }
 
@@ -42,8 +44,14 @@ export function EventForm({ initial, producers, onSubmit, onCancel }: Props) {
   const [subType, setSubType] = useState<string>(initial?.sub_type ?? "");
   const [producer, setProducer] = useState(initial?.producer_name ?? "");
   const [status, setStatus] = useState<EventStatus>(initial?.status ?? defaultStatus);
+  const [dealType, setDealType] = useState<DealType>(
+    initial?.deal_type ?? "split",
+  );
   const [deal, setDeal] = useState<string>(
     initial?.deal != null ? String(initial.deal) : "",
+  );
+  const [dealFitPrice, setDealFitPrice] = useState<string>(
+    initial?.deal_fit_price != null ? String(initial.deal_fit_price) : "",
   );
   const [campaign, setCampaign] = useState<string>(
     initial?.campaign != null ? String(initial.campaign) : "",
@@ -51,7 +59,6 @@ export function EventForm({ initial, producers, onSubmit, onCancel }: Props) {
   const [campaignAmount, setCampaignAmount] = useState<string>(
     initial?.campaign_amount != null ? String(initial.campaign_amount) : "",
   );
-  const [ticketLink, setTicketLink] = useState(initial?.ticket_link ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [submitting, setSubmitting] = useState(false);
 
@@ -72,7 +79,19 @@ export function EventForm({ initial, producers, onSubmit, onCancel }: Props) {
         sub_type: hasSub ? subType || null : null,
         producer_name: producer.trim() || null,
         status,
-        deal: deal === "" ? null : Math.max(0, Math.min(100, Math.round(Number(deal)))),
+        deal_type: dealType,
+        deal:
+          dealType === "split"
+            ? deal === ""
+              ? null
+              : Math.max(0, Math.min(100, Math.round(Number(deal))))
+            : null,
+        deal_fit_price:
+          dealType === "fit_price"
+            ? dealFitPrice === "" || !Number.isFinite(Number(dealFitPrice))
+              ? null
+              : Math.max(0, Math.round(Number(dealFitPrice) * 100) / 100)
+            : null,
         campaign:
           campaign === ""
             ? null
@@ -81,7 +100,6 @@ export function EventForm({ initial, producers, onSubmit, onCancel }: Props) {
           campaignAmount === "" || !Number.isFinite(Number(campaignAmount))
             ? null
             : Math.max(0, Math.round(Number(campaignAmount) * 100) / 100),
-        ticket_link: ticketLink.trim() || null,
         notes: notes.trim() || null,
       });
     } finally {
@@ -193,19 +211,56 @@ export function EventForm({ initial, producers, onSubmit, onCancel }: Props) {
         </div>
       </div>
 
-      <div className="form-row single">
+      <div className="form-row">
         <div>
-          <label>דיל — אחוז למועדון מהכרטיסים (%)</label>
-          <input
-            type="number"
-            dir="ltr"
-            min={0}
-            max={100}
-            value={deal}
-            onChange={(e) => setDeal(e.target.value)}
-            placeholder="0 – 100"
-          />
+          <label>סוג דיל</label>
+          <div style={{ display: "flex", gap: 16, marginTop: 6 }}>
+            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input
+                type="radio"
+                name="deal-type"
+                checked={dealType === "split"}
+                onChange={() => setDealType("split")}
+              />
+              חלוקת אחוזים
+            </label>
+            <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <input
+                type="radio"
+                name="deal-type"
+                checked={dealType === "fit_price"}
+                onChange={() => setDealType("fit_price")}
+              />
+              מחיר קבוע
+            </label>
+          </div>
         </div>
+        {dealType === "split" ? (
+          <div>
+            <label>דיל — אחוז למועדון מהכרטיסים (%)</label>
+            <input
+              type="number"
+              dir="ltr"
+              min={0}
+              max={100}
+              value={deal}
+              onChange={(e) => setDeal(e.target.value)}
+              placeholder="0 – 100"
+            />
+          </div>
+        ) : (
+          <div>
+            <label>מחיר קבוע למועדון (₪)</label>
+            <input
+              type="text"
+              inputMode="decimal"
+              dir="ltr"
+              value={dealFitPrice}
+              onChange={(e) => setDealFitPrice(e.target.value)}
+              placeholder="סכום קבוע"
+            />
+          </div>
+        )}
       </div>
 
       <div className="form-row">
@@ -230,19 +285,6 @@ export function EventForm({ initial, producers, onSubmit, onCancel }: Props) {
             value={campaign}
             onChange={(e) => setCampaign(e.target.value)}
             placeholder="0 – 100"
-          />
-        </div>
-      </div>
-
-      <div className="form-row single">
-        <div>
-          <label>לינק מכירת כרטיסים</label>
-          <input
-            type="url"
-            dir="ltr"
-            value={ticketLink}
-            onChange={(e) => setTicketLink(e.target.value)}
-            placeholder="https://"
           />
         </div>
       </div>

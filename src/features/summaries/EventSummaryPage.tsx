@@ -7,11 +7,13 @@ import type {
   SummaryTicketRow,
 } from "../../db/types";
 import { getEvent } from "../events/eventsRepo";
+import { clubTicketShareOf, dealLabel } from "../events/dealCalc";
 import { StatusBadge } from "../../components/StatusBadge";
 import { useDialog } from "../../components/dialog";
 import { formatDate } from "../../utils/format";
 import {
   OZEN_SOURCE,
+  VAT_RATE,
   deleteSummary,
   deleteTicket,
   ensureSummaryForEvent,
@@ -23,6 +25,11 @@ import {
 } from "./summariesRepo";
 import { listEventTypeStaff } from "./settingsRepo";
 import { CsvUploadModal } from "./CsvUploadModal";
+import { downloadProducerInvoice } from "./producerInvoice";
+import { SendInvoiceModal } from "./SendInvoiceModal";
+import { useSenderState } from "./emailInvoice";
+import { getProducer } from "../producers/producersRepo";
+import { supabase } from "../../db/supabase";
 
 function formatMoney(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return "—";
@@ -254,8 +261,8 @@ function AddRowModal({
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-backdrop">
+      <div className="modal">
         <div className="modal-header">
           <h2>{title}</h2>
           <button className="btn btn-secondary btn-sm" onClick={onClose}>
@@ -344,12 +351,23 @@ export function EventSummaryPage() {
   const [csvOpen, setCsvOpen] = useState(false);
   const [addBoxOpen, setAddBoxOpen] = useState(false);
   const [addPresaleOpen, setAddPresaleOpen] = useState(false);
+  const [exportingInvoice, setExportingInvoice] = useState(false);
+  const [sendInvoiceOpen, setSendInvoiceOpen] = useState(false);
+  const [producerEmail, setProducerEmail] = useState<string | null>(null);
+  const senderState = useSenderState();
+  const sender =
+    senderState.status === "ready"
+      ? { email: senderState.email, providerToken: senderState.providerToken }
+      : null;
 
   // Bar + counter are controlled inputs for autosave.
   const [cash, setCash] = useState("0");
   const [credit, setCredit] = useState("0");
-  const [barExpenses, setBarExpenses] = useState("0");
   const [counter, setCounter] = useState("");
+  const [acum, setAcum] = useState("0");
+  const [stereoRecord, setStereoRecord] = useState("0");
+  const [channelsRecord, setChannelsRecord] = useState("0");
+  const [lightman, setLightman] = useState("0");
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -360,17 +378,22 @@ export function EventSummaryPage() {
       return;
     }
     const sum = await ensureSummaryForEvent(eventId);
-    const [ts, stf] = await Promise.all([
+    const [ts, stf, prod] = await Promise.all([
       listTickets(sum.id),
       ev.type ? listEventTypeStaff(ev.type, ev.sub_type) : Promise.resolve([]),
+      ev.producer_id ? getProducer(ev.producer_id) : Promise.resolve(null),
     ]);
     setEvent(ev);
     setSummary(sum);
     setTickets(ts);
     setStaff(stf);
+    setProducerEmail(prod?.email ?? null);
     setCash(String(sum.bar_cash ?? 0));
     setCredit(String(sum.bar_credit ?? 0));
-    setBarExpenses(String(sum.bar_expenses ?? 0));
+    setAcum(String(sum.acum ?? 0));
+    setStereoRecord(String(sum.stereo_record ?? 0));
+    setChannelsRecord(String(sum.channels_record ?? 0));
+    setLightman(String(sum.lightman ?? 0));
     setCounter(sum.counter == null ? "" : String(sum.counter));
     setLoading(false);
   }, [eventId]);
@@ -398,13 +421,6 @@ export function EventSummaryPage() {
     await updateSummary(summary.id, { bar_credit: n });
     setSummary({ ...summary, bar_credit: n });
   }
-  async function saveBarExpenses() {
-    if (!summary) return;
-    const n = Number(barExpenses);
-    if (!Number.isFinite(n) || n === summary.bar_expenses) return;
-    await updateSummary(summary.id, { bar_expenses: n });
-    setSummary({ ...summary, bar_expenses: n });
-  }
   async function saveCounter() {
     if (!summary) return;
     const n = counter === "" ? null : Math.max(0, Math.floor(Number(counter)));
@@ -412,6 +428,34 @@ export function EventSummaryPage() {
     if (n === summary.counter) return;
     await updateSummary(summary.id, { counter: n });
     setSummary({ ...summary, counter: n });
+  }
+  async function saveAcum() {
+    if (!summary) return;
+    const n = Number(acum);
+    if (!Number.isFinite(n) || n === summary.acum) return;
+    await updateSummary(summary.id, { acum: n });
+    setSummary({ ...summary, acum: n });
+  }
+  async function saveStereoRecord() {
+    if (!summary) return;
+    const n = Number(stereoRecord);
+    if (!Number.isFinite(n) || n === summary.stereo_record) return;
+    await updateSummary(summary.id, { stereo_record: n });
+    setSummary({ ...summary, stereo_record: n });
+  }
+  async function saveChannelsRecord() {
+    if (!summary) return;
+    const n = Number(channelsRecord);
+    if (!Number.isFinite(n) || n === summary.channels_record) return;
+    await updateSummary(summary.id, { channels_record: n });
+    setSummary({ ...summary, channels_record: n });
+  }
+  async function saveLightman() {
+    if (!summary) return;
+    const n = Number(lightman);
+    if (!Number.isFinite(n) || n === summary.lightman) return;
+    await updateSummary(summary.id, { lightman: n });
+    setSummary({ ...summary, lightman: n });
   }
 
   async function addBoxOffice(
@@ -501,7 +545,9 @@ export function EventSummaryPage() {
     presale.filter((r) => r.source === OZEN_SOURCE),
   );
   const barIncome = (Number(cash) || 0) + (Number(credit) || 0);
-  const barExp = Number(barExpenses) || 0;
+  const barVatExpense = barIncome * VAT_RATE;
+  const barOperatingExpense = barIncome * (1 - VAT_RATE) * 0.25;
+  const barExp = barVatExpense + barOperatingExpense;
   const barTotal = barIncome - barExp;
   const counterN = counter === "" ? null : Number(counter);
   const perHead =
@@ -512,14 +558,33 @@ export function EventSummaryPage() {
   const campaignPct = event?.campaign ?? 0;
   const campaignAmountN = event?.campaign_amount ?? 0;
   const clubCampaignExpense = campaignAmountN * (campaignPct / 100);
-  const expenses = staffTotal + clubCampaignExpense;
-  const dealPct = event?.deal ?? 0;
   const ticketBaseForDeal =
     presaleRevenue - presaleCommissions + boxOfficeRevenue;
-  const clubTicketShare = ticketBaseForDeal * (dealPct / 100);
+  const clubTicketShare = event
+    ? clubTicketShareOf(event, ticketBaseForDeal)
+    : 0;
+  const dealLabelText = event ? dealLabel(event) : "—";
   const clubTicketIncome = clubTicketShare + ozenCommissionTotal;
-  const clubTotalRevenue = clubTicketIncome + barTotal;
+  const clubTotalRevenue = clubTicketIncome + barIncome;
+  const expenses = staffTotal + clubCampaignExpense + barExp;
   const clubNet = clubTotalRevenue - expenses;
+
+  const producerCampaignPct = 100 - campaignPct;
+  const producerTicketShare =
+    event?.deal_type === "fit_price"
+      ? ticketBaseForDeal
+      : ticketBaseForDeal - clubTicketShare;
+  const producerCampaignExpense =
+    campaignAmountN * (producerCampaignPct / 100);
+  const acumN = Number(acum) || 0;
+  const stereoRecordN = Number(stereoRecord) || 0;
+  const channelsRecordN = Number(channelsRecord) || 0;
+  const lightmanN = Number(lightman) || 0;
+  const additionalExpensesTotal =
+    acumN + stereoRecordN + channelsRecordN + lightmanN;
+  const producerExpenses = producerCampaignExpense + additionalExpensesTotal;
+  const producerNet = producerTicketShare - producerExpenses;
+  const producerNetExVat = producerNet / (1 + VAT_RATE);
 
   if (loading) return <div className="empty">טוען…</div>;
   if (!event) {
@@ -724,31 +789,87 @@ export function EventSummaryPage() {
             />
           </div>
         </div>
-        <div className="form-row single">
+        <div
+          className="muted"
+          style={{ fontSize: 13, marginTop: 10, display: "grid", gap: 2 }}
+        >
           <div>
-            <label>הוצאות בר</label>
+            הכנסות ברוטו: <span dir="ltr">{formatMoney(barIncome)}</span>
+          </div>
+          <div>
+            מע"מ בר ({Math.round(VAT_RATE * 100)}%):{" "}
+            <span dir="ltr">{formatMoney(barVatExpense)}</span>
+          </div>
+          <div>
+            הוצאות בר (25% מהכנסה ללא מע"מ):{" "}
+            <span dir="ltr">{formatMoney(barOperatingExpense)}</span>
+          </div>
+          <div>
+            נטו הכנסות בר:{" "}
+            <span dir="ltr">{formatMoney(barTotal)}</span>
+          </div>
+          <div>
+            הכנסה לראש:{" "}
+            <span dir="ltr">
+              {perHead == null ? "—" : formatMoney(perHead)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Additional expenses (producer only) */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <h2>הוצאות נוספות</h2>
+        <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>
+          הוצאות אלו מופחתות מהמפיק בלבד ולא מהמועדון.
+        </div>
+        <div className="form-row">
+          <div>
+            <label>אקו"ם (זכויות יוצרים)</label>
             <input
               type="number"
               dir="ltr"
-              value={barExpenses}
-              onChange={(e) => setBarExpenses(e.target.value)}
-              onBlur={saveBarExpenses}
+              value={acum}
+              onChange={(e) => setAcum(e.target.value)}
+              onBlur={saveAcum}
+            />
+          </div>
+          <div>
+            <label>הקלטת סטריאו</label>
+            <input
+              type="number"
+              dir="ltr"
+              value={stereoRecord}
+              onChange={(e) => setStereoRecord(e.target.value)}
+              onBlur={saveStereoRecord}
+            />
+          </div>
+        </div>
+        <div className="form-row">
+          <div>
+            <label>הקלטת ערוצים</label>
+            <input
+              type="number"
+              dir="ltr"
+              value={channelsRecord}
+              onChange={(e) => setChannelsRecord(e.target.value)}
+              onBlur={saveChannelsRecord}
+            />
+          </div>
+          <div>
+            <label>תאורן</label>
+            <input
+              type="number"
+              dir="ltr"
+              value={lightman}
+              onChange={(e) => setLightman(e.target.value)}
+              onBlur={saveLightman}
             />
           </div>
         </div>
         <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>
-          הכנסות ברוטו: <span dir="ltr">{formatMoney(barIncome)}</span>
-          {" · "}
-          הוצאות: <span dir="ltr">{formatMoney(barExp)}</span>
-          {" · "}
-          <strong>
-            נטו בר: <span dir="ltr">{formatMoney(barTotal)}</span>
-          </strong>
-          {" · "}
-          הכנסה לראש:{" "}
-          <span dir="ltr">
-            {perHead == null ? "—" : formatMoney(perHead)}
-          </span>
+          סה"כ:{" "}
+          <span dir="ltr">{formatMoney(additionalExpensesTotal)}</span>
         </div>
       </div>
 
@@ -842,75 +963,289 @@ export function EventSummaryPage() {
       {/* Summary strip */}
       <div className="card" style={{ marginBottom: 16 }}>
         <h2>סיכום כולל</h2>
-        <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
-          <div>
-            הכנסות כרטיסים ברוטו:{" "}
-            <span dir="ltr">{formatMoney(totalTicketRevenue)}</span>
-          </div>
-          <div>
-            עמלות מכירה מוקדמת:{" "}
-            <span dir="ltr">{formatMoney(presaleCommissions)}</span>
-          </div>
-          {ozenCommissionTotal > 0 && (
-            <div className="muted" style={{ fontSize: 13 }}>
-              ‎מתוכן עמלת אתר האוזן (מוחזרת למועדון):{" "}
-              <span dir="ltr">{formatMoney(ozenCommissionTotal)}</span>
-            </div>
-          )}
-          <div>
-            בסיס לחלוקה:{" "}
-            <span dir="ltr">{formatMoney(ticketBaseForDeal)}</span>
-          </div>
-          <div>
-            דיל למועדון: <span dir="ltr">{dealPct}%</span>
-          </div>
-          <div>
-            חלק המועדון מהכרטיסים:{" "}
-            <span dir="ltr">{formatMoney(clubTicketShare)}</span>
-          </div>
-          {ozenCommissionTotal > 0 && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 24,
+            fontSize: 14,
+          }}
+        >
+          {/* הכנסות */}
+          <div style={{ display: "grid", gap: 6, alignContent: "start" }}>
+            <h3 style={{ fontSize: 14, margin: 0, marginBottom: 4 }}>
+              הכנסות
+            </h3>
             <div>
-              החזר עמלת אתר האוזן:{" "}
-              <span dir="ltr">{formatMoney(ozenCommissionTotal)}</span>
+              הכנסות כרטיסים ברוטו:{" "}
+              <span dir="ltr">{formatMoney(totalTicketRevenue)}</span>
             </div>
-          )}
-          <div>
-            סה"כ הכנסות כרטיסים למועדון:{" "}
-            <span dir="ltr">{formatMoney(clubTicketIncome)}</span>
+            <div className="muted" style={{ fontSize: 13 }}>
+              עמלות מכירה מוקדמת:{" "}
+              <span dir="ltr">{formatMoney(presaleCommissions)}</span>
+            </div>
+            {ozenCommissionTotal > 0 && (
+              <div className="muted" style={{ fontSize: 13 }}>
+                ‎מתוכן עמלת אתר האוזן (מוחזרת למועדון):{" "}
+                <span dir="ltr">{formatMoney(ozenCommissionTotal)}</span>
+              </div>
+            )}
+            <div>
+              בסיס לחלוקה:{" "}
+              <span dir="ltr">{formatMoney(ticketBaseForDeal)}</span>
+            </div>
+            <div>
+              דיל: <span dir="ltr">{dealLabelText}</span>
+            </div>
+            <div>
+              חלק המועדון מהכרטיסים:{" "}
+              <span dir="ltr">{formatMoney(clubTicketShare)}</span>
+            </div>
+            {ozenCommissionTotal > 0 && (
+              <div>
+                החזר עמלת אתר האוזן:{" "}
+                <span dir="ltr">{formatMoney(ozenCommissionTotal)}</span>
+              </div>
+            )}
+            <div>
+              סה"כ הכנסות כרטיסים למועדון:{" "}
+              <span dir="ltr">{formatMoney(clubTicketIncome)}</span>
+            </div>
+            <div>
+              הכנסות בר ברוטו:{" "}
+              <span dir="ltr">{formatMoney(barIncome)}</span>
+            </div>
+            <div
+              style={{
+                fontWeight: 600,
+                paddingTop: 8,
+                borderTop: "1px solid var(--border)",
+              }}
+            >
+              סה"כ הכנסות למועדון:{" "}
+              <span dir="ltr">{formatMoney(clubTotalRevenue)}</span>
+            </div>
           </div>
-          <div>
-            נטו בר: <span dir="ltr">{formatMoney(barTotal)}</span>
+
+          {/* הוצאות */}
+          <div style={{ display: "grid", gap: 6, alignContent: "start" }}>
+            <h3 style={{ fontSize: 14, margin: 0, marginBottom: 4 }}>
+              הוצאות
+            </h3>
+            <div>
+              הוצאות צוות:{" "}
+              <span dir="ltr">{formatMoney(staffTotal)}</span>
+            </div>
+            <div>
+              הוצאות קמפיין (חלק המועדון):{" "}
+              <span dir="ltr">{formatMoney(clubCampaignExpense)}</span>
+              {campaignAmountN > 0 && (
+                <span className="muted" style={{ fontSize: 13 }}>
+                  {" "}
+                  ({campaignPct}% מתוך{" "}
+                  <span dir="ltr">{formatMoney(campaignAmountN)}</span>)
+                </span>
+              )}
+            </div>
+            <div>
+              מע"מ בר ({Math.round(VAT_RATE * 100)}%):{" "}
+              <span dir="ltr">{formatMoney(barVatExpense)}</span>
+            </div>
+            <div>
+              הוצאות בר (25%):{" "}
+              <span dir="ltr">{formatMoney(barOperatingExpense)}</span>
+            </div>
+            <div
+              style={{
+                fontWeight: 600,
+                paddingTop: 8,
+                borderTop: "1px solid var(--border)",
+              }}
+            >
+              סה"כ הוצאות: <span dir="ltr">{formatMoney(expenses)}</span>
+            </div>
           </div>
-          <div style={{ fontWeight: 600 }}>
-            סה"כ הכנסות למועדון:{" "}
-            <span dir="ltr">{formatMoney(clubTotalRevenue)}</span>
-          </div>
-          <div>
-            הוצאות צוות:{" "}
-            <span dir="ltr">{formatMoney(staffTotal)}</span>
-          </div>
-          <div>
-            הוצאות קמפיין (חלק המועדון):{" "}
-            <span dir="ltr">{formatMoney(clubCampaignExpense)}</span>
-            {campaignAmountN > 0 && (
-              <span className="muted" style={{ fontSize: 13 }}>
-                {" "}
-                ({campaignPct}% מתוך{" "}
-                <span dir="ltr">{formatMoney(campaignAmountN)}</span>)
+        </div>
+
+        <div
+          style={{
+            fontWeight: 600,
+            fontSize: 15,
+            marginTop: 16,
+            paddingTop: 12,
+            borderTop: "1px solid var(--border)",
+          }}
+        >
+          נטו למועדון: <span dir="ltr">{formatMoney(clubNet)}</span>
+        </div>
+      </div>
+
+      {/* Producer summary */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        <div
+          className="page-header"
+          style={{ marginBottom: 12, alignItems: "center" }}
+        >
+          <h2 style={{ margin: 0 }}>
+            סיכום מפיק
+            {event.producer_name && (
+              <span
+                className="row-value muted"
+                dir="auto"
+                style={{ fontWeight: 400, fontSize: 14, marginInlineStart: 8 }}
+              >
+                — {event.producer_name}
               </span>
             )}
+          </h2>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              className="btn btn-sm"
+              onClick={async () => {
+                if (!summary || exportingInvoice) return;
+                setExportingInvoice(true);
+                try {
+                  await downloadProducerInvoice(event, summary, tickets);
+                } catch (err) {
+                  console.error("invoice export failed", err);
+                  await ask(
+                    `ייצוא סיכום האירוע נכשל: ${
+                      err instanceof Error ? err.message : String(err)
+                    }`,
+                  );
+                } finally {
+                  setExportingInvoice(false);
+                }
+              }}
+              disabled={!summary || exportingInvoice}
+            >
+              {exportingInvoice ? "מייצא…" : "ייצוא סיכום אירוע למפיק (PDF)"}
+            </button>
+            {senderState.status !== "not-allowed" && (
+              <button
+                className="btn btn-sm"
+                onClick={async () => {
+                  if (senderState.status === "no-token") {
+                    const ok = await ask(
+                      'כדי לשלוח מייל יש להתחבר מחדש עם Google (לאישור הרשאת שליחת דואר). להתנתק עכשיו?',
+                    );
+                    if (ok) await supabase.auth.signOut();
+                    return;
+                  }
+                  if (!producerEmail) return;
+                  setSendInvoiceOpen(true);
+                }}
+                disabled={
+                  !summary ||
+                  (senderState.status === "ready" && !producerEmail)
+                }
+                title={
+                  senderState.status === "no-token"
+                    ? "יש להתחבר מחדש עם Google"
+                    : !producerEmail
+                      ? "למפיק אין כתובת מייל"
+                      : undefined
+                }
+              >
+                שלח למפיק במייל
+              </button>
+            )}
           </div>
-          <div>
-            סה"כ הוצאות: <span dir="ltr">{formatMoney(expenses)}</span>
+        </div>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 24,
+            fontSize: 14,
+          }}
+        >
+          {/* הכנסות מפיק */}
+          <div style={{ display: "grid", gap: 6, alignContent: "start" }}>
+            <h3 style={{ fontSize: 14, margin: 0, marginBottom: 4 }}>
+              הכנסות
+            </h3>
+            <div className="muted" style={{ fontSize: 13 }}>
+              בסיס לחלוקה:{" "}
+              <span dir="ltr">{formatMoney(ticketBaseForDeal)}</span>
+            </div>
+            <div className="muted" style={{ fontSize: 13 }}>
+              דיל: <span dir="ltr">{dealLabelText}</span>
+            </div>
+            <div
+              style={{
+                fontWeight: 600,
+                paddingTop: 8,
+                borderTop: "1px solid var(--border)",
+              }}
+            >
+              הכנסות כרטיסים למפיק:{" "}
+              <span dir="ltr">{formatMoney(producerTicketShare)}</span>
+            </div>
           </div>
-          <div
-            style={{
-              fontWeight: 600,
-              paddingTop: 8,
-              borderTop: "1px solid var(--border)",
-            }}
-          >
-            נטו למועדון: <span dir="ltr">{formatMoney(clubNet)}</span>
+
+          {/* הוצאות מפיק */}
+          <div style={{ display: "grid", gap: 6, alignContent: "start" }}>
+            <h3 style={{ fontSize: 14, margin: 0, marginBottom: 4 }}>
+              הוצאות
+            </h3>
+            <div>
+              הוצאות קמפיין (חלק המפיק):{" "}
+              <span dir="ltr">{formatMoney(producerCampaignExpense)}</span>
+              {campaignAmountN > 0 && (
+                <span className="muted" style={{ fontSize: 13 }}>
+                  {" "}
+                  ({producerCampaignPct}% מתוך{" "}
+                  <span dir="ltr">{formatMoney(campaignAmountN)}</span>)
+                </span>
+              )}
+            </div>
+            <div>
+              אקו"ם: <span dir="ltr">{formatMoney(acumN)}</span>
+            </div>
+            <div>
+              הקלטת סטריאו:{" "}
+              <span dir="ltr">{formatMoney(stereoRecordN)}</span>
+            </div>
+            <div>
+              הקלטת ערוצים:{" "}
+              <span dir="ltr">{formatMoney(channelsRecordN)}</span>
+            </div>
+            <div>
+              תאורן: <span dir="ltr">{formatMoney(lightmanN)}</span>
+            </div>
+            <div
+              style={{
+                fontWeight: 600,
+                paddingTop: 8,
+                borderTop: "1px solid var(--border)",
+              }}
+            >
+              סה"כ הוצאות:{" "}
+              <span dir="ltr">{formatMoney(producerExpenses)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            marginTop: 16,
+            paddingTop: 12,
+            borderTop: "1px solid var(--border)",
+            display: "grid",
+            gap: 4,
+          }}
+        >
+          <div style={{ fontWeight: 600, fontSize: 15 }}>
+            נטו למפיק (כולל מע"מ):{" "}
+            <span dir="ltr">{formatMoney(producerNet)}</span>
+          </div>
+          <div className="muted" style={{ fontSize: 13 }}>
+            נטו למפיק (לא כולל מע"מ):{" "}
+            <span dir="ltr">{formatMoney(producerNetExVat)}</span>
+            <span style={{ marginInlineStart: 6 }}>
+              (מע"מ <span dir="ltr">{Math.round(VAT_RATE * 100)}%</span>)
+            </span>
           </div>
         </div>
       </div>
@@ -957,6 +1292,18 @@ export function EventSummaryPage() {
         onClose={() => setAddPresaleOpen(false)}
         onSubmit={addPresale}
       />
+      {sender && producerEmail && summary && (
+        <SendInvoiceModal
+          open={sendInvoiceOpen}
+          event={event}
+          summary={summary}
+          tickets={tickets}
+          producerEmail={producerEmail}
+          sender={sender}
+          onClose={() => setSendInvoiceOpen(false)}
+          onSent={() => setSendInvoiceOpen(false)}
+        />
+      )}
       <datalist id="ticket-sources">
         {knownSources.map((s) => (
           <option key={s} value={s} />

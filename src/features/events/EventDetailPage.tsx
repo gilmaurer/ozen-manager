@@ -13,6 +13,7 @@ import { Modal } from "../../components/Modal";
 import { EventForm, EventFormValues } from "./EventForm";
 import { useEnums } from "../../services/enums";
 import { hasSubTypes, subTypeLabel } from "./subTypes";
+import { dealLabel } from "./dealCalc";
 
 export function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -57,10 +58,11 @@ export function EventDetailPage() {
       sub_type: values.sub_type,
       producer_id,
       status: values.status,
+      deal_type: values.deal_type,
       deal: values.deal,
+      deal_fit_price: values.deal_fit_price,
       campaign: values.campaign,
       campaign_amount: values.campaign_amount,
-      ticket_link: values.ticket_link,
       notes: values.notes,
     });
     setEditing(false);
@@ -141,8 +143,8 @@ export function EventDetailPage() {
           <StatusBadge status={event.status} />
         </div>
         <div className="detail-row">
-          <span className="muted">דיל (% למועדון): </span>
-          <span dir="ltr">{event.deal != null ? `${event.deal}%` : "—"}</span>
+          <span className="muted">דיל: </span>
+          <span dir="ltr">{dealLabel(event)}</span>
         </div>
         <div className="detail-row">
           <span className="muted">קמפיין — סכום: </span>
@@ -159,21 +161,6 @@ export function EventDetailPage() {
           <span dir="ltr">
             {event.campaign != null ? `${event.campaign}%` : "—"}
           </span>
-        </div>
-        <div className="detail-row">
-          <span className="muted">קישור לכרטיסים: </span>
-          {event.ticket_link ? (
-            <a
-              href={event.ticket_link}
-              target="_blank"
-              rel="noopener noreferrer"
-              dir="ltr"
-            >
-              {event.ticket_link}
-            </a>
-          ) : (
-            <span>—</span>
-          )}
         </div>
         <div className="detail-row">
           <span className="muted">הערות: </span>

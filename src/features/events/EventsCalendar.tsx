@@ -4,6 +4,7 @@ import type { EventStatus, EventWithProducer } from "../../db/types";
 import { formatDate } from "../../utils/format";
 import { useEnums } from "../../services/enums";
 import { InlineStatusSelect } from "./InlineStatusSelect";
+import { MONTH_FMT, startOfMonth, toIso } from "./monthNav";
 
 interface Cell {
   iso: string;
@@ -15,23 +16,8 @@ interface Cell {
 
 const WEEKDAYS = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
 
-const MONTH_FMT = new Intl.DateTimeFormat("he-IL", {
-  month: "long",
-  year: "numeric",
-});
-
-function startOfMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
-}
-
 function todayIso(): string {
-  const d = new Date();
-  return toIso(d);
-}
-
-function toIso(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return toIso(new Date());
 }
 
 function byDateThenTime(
