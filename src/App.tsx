@@ -13,6 +13,9 @@ import { ProducersPage } from "./features/producers/ProducersPage";
 import { ProducerDetailPage } from "./features/producers/ProducerDetailPage";
 import { SettingsPage } from "./features/settings/SettingsPage";
 import { EventSummaryPage } from "./features/summaries/EventSummaryPage";
+import { UpdaterProvider } from "./features/updates/UpdaterProvider";
+import { UpdateBanner } from "./features/updates/UpdateBanner";
+import { UpdateCheckButton } from "./features/updates/UpdateCheckButton";
 
 const ADMIN_EMAILS = ["maurer.gil@gmail.com", "booking@ozenlive.com"];
 
@@ -78,6 +81,7 @@ function Sidebar() {
       )}
       <div className="sidebar-footer">
         <BackupStatus />
+        <UpdateCheckButton />
         <button className="btn btn-secondary btn-sm" onClick={handleSignOut}>
           יציאה
         </button>
@@ -103,23 +107,26 @@ export default function App() {
     <AuthGate>
       <EnumsProvider>
         <DialogProvider>
-          <HashRouter>
-            <OfflineBanner />
-            <div className="layout">
-              <Sidebar />
-              <main className="main">
-                <Routes>
-                  <Route path="/" element={<DashboardPage />} />
-                  <Route path="/events" element={<EventsPage />} />
-                  <Route path="/events/:id" element={<EventDetailPage />} />
-                  <Route path="/events/:id/summary" element={<EventSummaryPage />} />
-                  <Route path="/producers" element={<ProducersPage />} />
-                  <Route path="/producers/:id" element={<ProducerDetailPage />} />
-                  <Route path="/settings" element={<AdminGuardedSettings />} />
-                </Routes>
-              </main>
-            </div>
-          </HashRouter>
+          <UpdaterProvider>
+            <HashRouter>
+              <UpdateBanner />
+              <OfflineBanner />
+              <div className="layout">
+                <Sidebar />
+                <main className="main">
+                  <Routes>
+                    <Route path="/" element={<DashboardPage />} />
+                    <Route path="/events" element={<EventsPage />} />
+                    <Route path="/events/:id" element={<EventDetailPage />} />
+                    <Route path="/events/:id/summary" element={<EventSummaryPage />} />
+                    <Route path="/producers" element={<ProducersPage />} />
+                    <Route path="/producers/:id" element={<ProducerDetailPage />} />
+                    <Route path="/settings" element={<AdminGuardedSettings />} />
+                  </Routes>
+                </main>
+              </div>
+            </HashRouter>
+          </UpdaterProvider>
         </DialogProvider>
       </EnumsProvider>
     </AuthGate>

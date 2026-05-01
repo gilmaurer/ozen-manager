@@ -7,6 +7,7 @@ import { supabase } from "../../db/supabase";
 export const ALLOWED_SENDERS = [
   "maurer.gil@gmail.com",
   "booking@ozenlive.com",
+  "elinora@ozenlive.com",
 ];
 
 export interface CurrentSender {
