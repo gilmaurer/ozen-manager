@@ -361,8 +361,7 @@ export function EventSummaryPage() {
       : null;
 
   // Bar + counter are controlled inputs for autosave.
-  const [cash, setCash] = useState("0");
-  const [credit, setCredit] = useState("0");
+  const [barIncomeInput, setBarIncomeInput] = useState("0");
   const [counter, setCounter] = useState("");
   const [acum, setAcum] = useState("0");
   const [stereoRecord, setStereoRecord] = useState("0");
@@ -388,8 +387,7 @@ export function EventSummaryPage() {
     setTickets(ts);
     setStaff(stf);
     setProducerEmail(prod?.email ?? null);
-    setCash(String(sum.bar_cash ?? 0));
-    setCredit(String(sum.bar_credit ?? 0));
+    setBarIncomeInput(String((sum.bar_cash ?? 0) + (sum.bar_credit ?? 0)));
     setAcum(String(sum.acum ?? 0));
     setStereoRecord(String(sum.stereo_record ?? 0));
     setChannelsRecord(String(sum.channels_record ?? 0));
@@ -407,19 +405,14 @@ export function EventSummaryPage() {
     setTickets(await listTickets(summary.id));
   }
 
-  async function saveCash() {
+  async function saveBarIncome() {
     if (!summary) return;
-    const n = Number(cash);
-    if (!Number.isFinite(n) || n === summary.bar_cash) return;
-    await updateSummary(summary.id, { bar_cash: n });
-    setSummary({ ...summary, bar_cash: n });
-  }
-  async function saveCredit() {
-    if (!summary) return;
-    const n = Number(credit);
-    if (!Number.isFinite(n) || n === summary.bar_credit) return;
-    await updateSummary(summary.id, { bar_credit: n });
-    setSummary({ ...summary, bar_credit: n });
+    const n = Number(barIncomeInput);
+    if (!Number.isFinite(n)) return;
+    const already = (summary.bar_cash ?? 0) + (summary.bar_credit ?? 0);
+    if (n === already) return;
+    await updateSummary(summary.id, { bar_cash: n, bar_credit: 0 });
+    setSummary({ ...summary, bar_cash: n, bar_credit: 0 });
   }
   async function saveCounter() {
     if (!summary) return;
@@ -544,7 +537,7 @@ export function EventSummaryPage() {
   const ozenCommissionTotal = commissionSum(
     presale.filter((r) => r.source === OZEN_SOURCE),
   );
-  const barIncome = (Number(cash) || 0) + (Number(credit) || 0);
+  const barIncome = Number(barIncomeInput) || 0;
   const barVatExpense = barIncome * VAT_RATE;
   const barOperatingExpense = barIncome * (1 - VAT_RATE) * 0.25;
   const barExp = barVatExpense + barOperatingExpense;
@@ -767,25 +760,15 @@ export function EventSummaryPage() {
       {/* Bar */}
       <div className="card" style={{ marginBottom: 16 }}>
         <h2>בר</h2>
-        <div className="form-row">
+        <div className="form-row single">
           <div>
-            <label>מזומן</label>
+            <label>הכנסות בר</label>
             <input
               type="number"
               dir="ltr"
-              value={cash}
-              onChange={(e) => setCash(e.target.value)}
-              onBlur={saveCash}
-            />
-          </div>
-          <div>
-            <label>אשראי</label>
-            <input
-              type="number"
-              dir="ltr"
-              value={credit}
-              onChange={(e) => setCredit(e.target.value)}
-              onBlur={saveCredit}
+              value={barIncomeInput}
+              onChange={(e) => setBarIncomeInput(e.target.value)}
+              onBlur={saveBarIncome}
             />
           </div>
         </div>
