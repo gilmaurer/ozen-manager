@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type {
   EventStatus,
+  EventType,
   EventWithProducer,
 } from "../../db/types";
 import {
@@ -23,6 +24,24 @@ import { pickAndUploadInvoice } from "../../services/driveUpload";
 
 const PAYMENT_STATUSES = ["waiting_invoice", "waiting_payment", "done"];
 
+interface Filters {
+  q: string;
+  status: EventStatus | "";
+  type: EventType | "";
+}
+const EMPTY_FILTERS: Filters = { q: "", status: "", type: "" };
+
+function filtersActive(f: Filters): boolean {
+  return f.q !== "" || f.status !== "" || f.type !== "";
+}
+
+function matches(f: Filters, e: EventWithProducer): boolean {
+  if (f.q && !e.name.toLowerCase().includes(f.q.toLowerCase())) return false;
+  if (f.status && e.status !== f.status) return false;
+  if (f.type && e.type !== f.type) return false;
+  return true;
+}
+
 function fmtMoney(n: number): string {
   if (!Number.isFinite(n)) return "—";
   return `${n.toLocaleString("he-IL", {
@@ -41,8 +60,17 @@ export function PaymentsPage() {
   const [aggs, setAggs] = useState<Map<number, SummaryAggregate>>(() => new Map());
   const [loading, setLoading] = useState(true);
   const [uploadingId, setUploadingId] = useState<number | null>(null);
-  const { typeByCode } = useEnums();
+  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const { types, typeByCode, statusByCode } = useEnums();
   const { ask, notify } = useDialog();
+
+  const paymentStatuses = PAYMENT_STATUSES
+    .map((code) => statusByCode[code])
+    .filter(Boolean);
+
+  function updateFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  }
 
   async function refresh() {
     setLoading(true);
@@ -61,8 +89,10 @@ export function PaymentsPage() {
 
   const rows = useMemo(
     () =>
-      events.slice().sort((a, b) => b.date.localeCompare(a.date)),
-    [events],
+      events
+        .filter((e) => matches(filters, e))
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    [events, filters],
   );
 
   function totalsFor(e: EventWithProducer): ProducerTotals {
@@ -131,11 +161,59 @@ export function PaymentsPage() {
       </div>
 
       <div className="card">
-        {rows.length === 0 ? (
+        {events.length > 0 && (
+          <div className="filter-bar">
+            <input
+              className="filter-search"
+              type="text"
+              placeholder="חיפוש לפי שם"
+              dir="auto"
+              value={filters.q}
+              onChange={(e) => updateFilter("q", e.target.value)}
+            />
+            <select
+              value={filters.status}
+              onChange={(e) =>
+                updateFilter("status", e.target.value as EventStatus | "")
+              }
+            >
+              <option value="">כל הסטטוסים</option>
+              {paymentStatuses.map((s) => (
+                <option key={s.code} value={s.code}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={filters.type}
+              onChange={(e) =>
+                updateFilter("type", e.target.value as EventType | "")
+              }
+            >
+              <option value="">כל הסוגים</option>
+              {types.map((t) => (
+                <option key={t.code} value={t.code}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            {filtersActive(filters) && (
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => setFilters(EMPTY_FILTERS)}
+              >
+                נקה סינון
+              </button>
+            )}
+          </div>
+        )}
+        {events.length === 0 ? (
           <div className="empty">
             אין אירועים במחזור התשלומים. שליחת סיכום אירוע למפיק תעביר את
             האירוע לכאן.
           </div>
+        ) : rows.length === 0 ? (
+          <div className="empty">אין תוצאות לסינון.</div>
         ) : (
           <table className="centered">
             <thead>
