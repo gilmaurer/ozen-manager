@@ -4,9 +4,7 @@ import type {
   EventStatus,
   EventType,
   EventWithProducer,
-  ProducerRow,
 } from "../../db/types";
-import { listProducers } from "../producers/producersRepo";
 import {
   listEvents,
   updateEventCheckNumber,
@@ -31,13 +29,13 @@ interface Filters {
   q: string;
   status: EventStatus | "";
   type: EventType | "";
-  producer_id: number | null;
+  producer: string;
 }
 const EMPTY_FILTERS: Filters = {
   q: "",
   status: "",
   type: "",
-  producer_id: null,
+  producer: "",
 };
 
 function filtersActive(f: Filters): boolean {
@@ -45,7 +43,7 @@ function filtersActive(f: Filters): boolean {
     f.q !== "" ||
     f.status !== "" ||
     f.type !== "" ||
-    f.producer_id !== null
+    f.producer !== ""
   );
 }
 
@@ -53,7 +51,13 @@ function matches(f: Filters, e: EventWithProducer): boolean {
   if (f.q && !e.name.toLowerCase().includes(f.q.toLowerCase())) return false;
   if (f.status && e.status !== f.status) return false;
   if (f.type && e.type !== f.type) return false;
-  if (f.producer_id !== null && e.producer_id !== f.producer_id) return false;
+  if (
+    f.producer &&
+    !(e.producer_name ?? "")
+      .toLowerCase()
+      .includes(f.producer.toLowerCase())
+  )
+    return false;
   return true;
 }
 
@@ -73,7 +77,6 @@ interface ProducerTotals {
 export function PaymentsPage() {
   const [events, setEvents] = useState<EventWithProducer[]>([]);
   const [aggs, setAggs] = useState<Map<number, SummaryAggregate>>(() => new Map());
-  const [producers, setProducers] = useState<ProducerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadingId, setUploadingId] = useState<number | null>(null);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
@@ -90,14 +93,12 @@ export function PaymentsPage() {
 
   async function refresh() {
     setLoading(true);
-    const [all, a, prods] = await Promise.all([
+    const [all, a] = await Promise.all([
       listEvents(),
       listSummaryAggregates().catch(() => new Map<number, SummaryAggregate>()),
-      listProducers().catch(() => [] as ProducerRow[]),
     ]);
     setEvents(all.filter((e) => PAYMENT_STATUSES.includes(e.status)));
     setAggs(a);
-    setProducers(prods);
     setLoading(false);
   }
 
@@ -231,22 +232,14 @@ export function PaymentsPage() {
                 </option>
               ))}
             </select>
-            <select
-              value={filters.producer_id ?? ""}
-              onChange={(e) =>
-                updateFilter(
-                  "producer_id",
-                  e.target.value === "" ? null : Number(e.target.value),
-                )
-              }
-            >
-              <option value="">כל המפיקים</option>
-              {producers.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            <input
+              className="filter-search"
+              type="text"
+              placeholder="חיפוש לפי מפיק"
+              dir="auto"
+              value={filters.producer}
+              onChange={(e) => updateFilter("producer", e.target.value)}
+            />
             {filtersActive(filters) && (
               <button
                 className="btn btn-secondary btn-sm"
