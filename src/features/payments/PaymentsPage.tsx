@@ -7,6 +7,7 @@ import type {
 } from "../../db/types";
 import {
   listEvents,
+  updateEventCheckNumber,
   updateEventInvoiceUrl,
   updateEventStatus,
 } from "../events/eventsRepo";
@@ -141,6 +142,22 @@ export function PaymentsPage() {
     }
   }
 
+  async function handleSaveCheckNumber(
+    e: EventWithProducer,
+    next: string,
+  ) {
+    const trimmed = next.trim();
+    const normalized = trimmed === "" ? null : trimmed;
+    if (normalized === e.check_number) return;
+    try {
+      await updateEventCheckNumber(e.id, normalized);
+      await refresh();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await notify(`שמירת מספר הצ'ק נכשלה: ${msg}`);
+    }
+  }
+
   async function handleReplace(e: EventWithProducer) {
     if (
       !(await ask(
@@ -226,6 +243,7 @@ export function PaymentsPage() {
                 <th>סה"כ כולל מע"מ</th>
                 <th>סה"כ ללא מע"מ</th>
                 <th>חשבונית</th>
+                <th>מספר צ'ק</th>
               </tr>
             </thead>
             <tbody>
@@ -305,6 +323,19 @@ export function PaymentsPage() {
                             : "העלה חשבונית"}
                         </button>
                       )}
+                    </td>
+                    <td>
+                      <input
+                        key={`check-${e.id}-${e.check_number ?? ""}`}
+                        type="text"
+                        dir="ltr"
+                        defaultValue={e.check_number ?? ""}
+                        placeholder="—"
+                        onBlur={(ev) =>
+                          handleSaveCheckNumber(e, ev.target.value)
+                        }
+                        style={{ width: 110, textAlign: "start" }}
+                      />
                     </td>
                   </tr>
                 );

@@ -64,6 +64,7 @@ export function EventDetailPage() {
       campaign: values.campaign,
       campaign_amount: values.campaign_amount,
       invoice_url: event.invoice_url,
+      check_number: event.check_number,
       notes: values.notes,
     });
     setEditing(false);

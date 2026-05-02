@@ -17,6 +17,7 @@ export interface EventRow {
   campaign: number | null;
   campaign_amount: number | null;
   invoice_url: string | null;
+  check_number: string | null;
   notes: string | null;
   created_at: string;
 }

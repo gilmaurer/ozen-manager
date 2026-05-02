@@ -157,6 +157,7 @@ export function EventsPage() {
     values: EventFormValues,
     producer_id: number | null,
     invoice_url: string | null,
+    check_number: string | null,
   ): EventInput {
     return {
       name: values.name,
@@ -172,13 +173,14 @@ export function EventsPage() {
       campaign: values.campaign,
       campaign_amount: values.campaign_amount,
       invoice_url,
+      check_number,
       notes: values.notes,
     };
   }
 
   async function handleCreate(values: EventFormValues) {
     const producer_id = await resolveProducerId(values.producer_name);
-    await createEvent(toEventInput(values, producer_id, null));
+    await createEvent(toEventInput(values, producer_id, null, null));
     setCreating(false);
     await refresh();
   }
@@ -188,7 +190,7 @@ export function EventsPage() {
     const producer_id = await resolveProducerId(values.producer_name);
     await updateEvent(
       editing.id,
-      toEventInput(values, producer_id, editing.invoice_url),
+      toEventInput(values, producer_id, editing.invoice_url, editing.check_number),
     );
     setEditing(null);
     await refresh();
