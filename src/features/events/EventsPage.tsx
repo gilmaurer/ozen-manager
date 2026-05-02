@@ -475,7 +475,7 @@ export function EventsPage() {
                           {a?.tickets_count ?? 0}
                         </td>
                         <td dir="ltr" style={{ textAlign: "start" }}>
-                          {ticketsRevenue.toLocaleString("he-IL")} ₪
+                          {ticketsRevenue.toLocaleString("he-IL")}{" ₪"}
                         </td>
                         <td dir="ltr" style={{ textAlign: "start" }}>
                           {dealLabel(e)}
@@ -483,11 +483,11 @@ export function EventsPage() {
                         <td dir="ltr" style={{ textAlign: "start" }}>
                           {clubTicketIncome.toLocaleString("he-IL", {
                             maximumFractionDigits: 2,
-                          })}{" "}
-                          ₪
+                          })}
+                          {" ₪"}
                         </td>
                         <td dir="ltr" style={{ textAlign: "start" }}>
-                          {barTotal.toLocaleString("he-IL")} ₪
+                          {barTotal.toLocaleString("he-IL")}{" ₪"}
                         </td>
                         <td dir="ltr" style={{ textAlign: "start" }}>
                           {a?.counter ?? "—"}
@@ -498,11 +498,11 @@ export function EventsPage() {
                         >
                           {clubTotalRevenue.toLocaleString("he-IL", {
                             maximumFractionDigits: 2,
-                          })}{" "}
-                          ₪
+                          })}
+                          {" ₪"}
                         </td>
                         <td dir="ltr" style={{ textAlign: "start" }}>
-                          {expenses.toLocaleString("he-IL")} ₪
+                          {expenses.toLocaleString("he-IL")}{" ₪"}
                         </td>
                         <td
                           dir="ltr"
@@ -510,8 +510,8 @@ export function EventsPage() {
                         >
                           {net.toLocaleString("he-IL", {
                             maximumFractionDigits: 2,
-                          })}{" "}
-                          ₪
+                          })}
+                          {" ₪"}
                         </td>
                       </tr>
                     );

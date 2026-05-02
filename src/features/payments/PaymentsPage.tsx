@@ -66,7 +66,7 @@ function fmtMoney(n: number): string {
   return `${n.toLocaleString("he-IL", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })} ₪`;
+  })} ₪`;
 }
 
 interface ProducerTotals {
