@@ -1,7 +1,7 @@
 import { useUpdater } from "./useUpdater";
 
 export function UpdateBanner() {
-  const { state, installNow, dismiss } = useUpdater();
+  const { state, installNow, restartNow, dismiss } = useUpdater();
 
   if (
     state.status === "idle" ||
@@ -52,7 +52,12 @@ export function UpdateBanner() {
         <span>מוריד עדכון… {state.pct}%</span>
       )}
       {state.status === "installing" && (
-        <span>מתקין עדכון — האפליקציה תופעל מחדש בקרוב…</span>
+        <>
+          <span>מתקין — האפליקציה תופעל מחדש בעוד כמה שניות…</span>
+          <button className="btn btn-sm" onClick={restartNow}>
+            הפעל מחדש עכשיו
+          </button>
+        </>
       )}
       {state.status === "error" && (
         <span>שגיאה בבדיקת עדכון: {state.message}</span>

@@ -15,6 +15,7 @@ export interface UpdaterApi {
   state: UpdateState;
   runCheck: () => Promise<void>;
   installNow: () => Promise<void>;
+  restartNow: () => Promise<void>;
   dismiss: () => void;
 }
 
