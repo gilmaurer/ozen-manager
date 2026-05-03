@@ -370,6 +370,7 @@ export function EventsPage() {
                 dir="auto"
                 value={filters.producer}
                 onChange={(e) => updateFilter("producer", e.target.value)}
+                style={{ flex: "0 1 110px", minWidth: 90 }}
               />
               <input
                 className="filter-date"
