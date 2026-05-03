@@ -42,7 +42,7 @@ interface Filters {
   q: string;
   status: EventStatus | "";
   type: EventType | "";
-  producer_id: number | null;
+  producer: string;
   from: string;
   to: string;
 }
@@ -51,7 +51,7 @@ const EMPTY_FILTERS: Filters = {
   q: "",
   status: "",
   type: "",
-  producer_id: null,
+  producer: "",
   from: "",
   to: "",
 };
@@ -61,7 +61,7 @@ function filtersActive(f: Filters): boolean {
     f.q !== "" ||
     f.status !== "" ||
     f.type !== "" ||
-    f.producer_id !== null ||
+    f.producer !== "" ||
     f.from !== "" ||
     f.to !== ""
   );
@@ -71,7 +71,13 @@ function matches(f: Filters, e: EventWithProducer): boolean {
   if (f.q && !e.name.toLowerCase().includes(f.q.toLowerCase())) return false;
   if (f.status && e.status !== f.status) return false;
   if (f.type && e.type !== f.type) return false;
-  if (f.producer_id !== null && e.producer_id !== f.producer_id) return false;
+  if (
+    f.producer &&
+    !(e.producer_name ?? "")
+      .toLowerCase()
+      .includes(f.producer.toLowerCase())
+  )
+    return false;
   if (f.from && e.date < f.from) return false;
   if (f.to && e.date > f.to) return false;
   return true;
@@ -357,22 +363,14 @@ export function EventsPage() {
                   </option>
                 ))}
               </select>
-              <select
-                value={filters.producer_id ?? ""}
-                onChange={(e) =>
-                  updateFilter(
-                    "producer_id",
-                    e.target.value === "" ? null : Number(e.target.value),
-                  )
-                }
-              >
-                <option value="">כל המפיקים</option>
-                {producers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
+              <input
+                className="filter-search"
+                type="text"
+                placeholder="חיפוש לפי מפיק"
+                dir="auto"
+                value={filters.producer}
+                onChange={(e) => updateFilter("producer", e.target.value)}
+              />
               <input
                 className="filter-date"
                 type="date"

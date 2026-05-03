@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   createProducer,
@@ -18,6 +18,17 @@ export function ProducersPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<ProducerWithCount | null>(null);
   const [creating, setCreating] = useState(false);
+  const [q, setQ] = useState("");
+
+  const visible = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const filtered = needle
+      ? producers.filter((p) => p.name.toLowerCase().includes(needle))
+      : producers;
+    return [...filtered].sort((a, b) =>
+      a.name.localeCompare(b.name, "he"),
+    );
+  }, [producers, q]);
 
   async function refresh() {
     setLoading(true);
@@ -69,6 +80,28 @@ export function ProducersPage() {
         ) : producers.length === 0 ? (
           <div className="empty">אין מפיקים עדיין.</div>
         ) : (
+          <>
+            <div className="filter-bar">
+              <input
+                className="filter-search"
+                type="text"
+                placeholder="חיפוש לפי שם"
+                dir="auto"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+              {q !== "" && (
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setQ("")}
+                >
+                  נקה סינון
+                </button>
+              )}
+            </div>
+            {visible.length === 0 ? (
+              <div className="empty">אין תוצאות לסינון.</div>
+            ) : (
           <table>
             <thead>
               <tr>
@@ -80,7 +113,7 @@ export function ProducersPage() {
               </tr>
             </thead>
             <tbody>
-              {producers.map((p) => (
+              {visible.map((p) => (
                 <tr key={p.id}>
                   <td>
                     <Link
@@ -116,6 +149,8 @@ export function ProducersPage() {
               ))}
             </tbody>
           </table>
+            )}
+          </>
         )}
       </div>
 
