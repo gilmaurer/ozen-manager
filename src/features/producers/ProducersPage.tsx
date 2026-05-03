@@ -83,7 +83,7 @@ export function ProducersPage() {
           <>
             <div className="filter-bar">
               <input
-                className="filter-search"
+                className="filter-search filter-search-sm"
                 type="text"
                 placeholder="חיפוש לפי שם"
                 dir="auto"

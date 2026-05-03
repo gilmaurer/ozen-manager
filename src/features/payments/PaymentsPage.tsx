@@ -233,7 +233,7 @@ export function PaymentsPage() {
               ))}
             </select>
             <input
-              className="filter-search"
+              className="filter-search filter-search-sm"
               type="text"
               placeholder="חיפוש לפי מפיק"
               dir="auto"

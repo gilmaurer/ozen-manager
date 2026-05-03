@@ -80,6 +80,98 @@ h3 { font-size: 16px; }
 .backup-status-error    { color: var(--danger); border-color: var(--danger); }
 .backup-status-disabled { color: var(--text-muted); font-style: italic; }
 
+.user-chip-wrap { position: relative; }
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.user-chip:hover { background: var(--bg-panel-hover); }
+.user-chip-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex: 0 0 auto;
+  background: var(--accent);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+.user-chip-name {
+  flex: 1 1 auto;
+  text-align: start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-chip-caret {
+  color: var(--text-muted);
+  font-size: 10px;
+  flex: 0 0 auto;
+}
+
+.user-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  inset-inline-end: 0;
+  inset-inline-start: 0;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: var(--shadow);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.user-popover-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.user-popover-header .user-chip-avatar {
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
+}
+.user-popover-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.user-popover-name {
+  font-weight: 600;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-popover-email {
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .login-screen {
   min-height: 100vh;
   display: flex;
@@ -497,6 +589,7 @@ label {
   padding: 6px 10px;
 }
 .filter-bar .filter-search { flex: 1 1 200px; min-width: 160px; }
+.filter-bar .filter-search.filter-search-sm { flex: 0 1 110px; min-width: 90px; }
 .filter-bar .filter-date { width: 150px; }
 .filter-bar .filter-spacer { flex: 1; }
 

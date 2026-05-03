@@ -364,13 +364,12 @@ export function EventsPage() {
                 ))}
               </select>
               <input
-                className="filter-search"
+                className="filter-search filter-search-sm"
                 type="text"
                 placeholder="חיפוש לפי מפיק"
                 dir="auto"
                 value={filters.producer}
                 onChange={(e) => updateFilter("producer", e.target.value)}
-                style={{ flex: "0 1 110px", minWidth: 90 }}
               />
               <input
                 className="filter-date"

@@ -96,6 +96,18 @@ Rust implementation: `src-tauri/src/drive_backup.rs`. Frontend: `src/services/ba
 - True offline mode (requires PowerSync/ElectricSQL or a custom sync engine)
 - Tests, CI, signing
 
+## UI conventions
+
+### Producer filter
+Whenever a list needs a "filter by producer" control, it is a **free-text search**, not a dropdown — the club will eventually have many producers, so dropdowns don't scale. Implementation pattern:
+
+- Filter state holds a string (`producer: string`), not a producer id.
+- Match is a case-insensitive substring check against `producer_name` (or the producer row's `name`).
+- The input uses `className="filter-search filter-search-sm"` so it renders narrower than the primary name/event search (see `.filter-search-sm` in `src/styles/global.css`). This is the visual standard across Events, Payments, and Producers pages — keep it consistent when adding new producer filters.
+- Placeholder: `חיפוש לפי מפיק` (or `חיפוש לפי שם` if the page is the producers list itself, matching on `producers.name`).
+
+Existing references: `src/features/events/EventsPage.tsx`, `src/features/payments/PaymentsPage.tsx`, `src/features/producers/ProducersPage.tsx`.
+
 ## Working style preferences
 - Keep components small; repos flat (no ORM layer).
 - Don't over-abstract — three similar forms is fine, no form factory.
