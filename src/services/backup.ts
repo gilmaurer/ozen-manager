@@ -3,33 +3,44 @@ import * as XLSX from "xlsx";
 import { supabase } from "../db/supabase";
 
 const MISSING_TOKEN = "missing Google access token";
+const PAYMENT_STATUSES = ["waiting_invoice", "waiting_payment", "done"];
 
 export type BackupResult =
   | { ok: true }
   | { ok: false; disabled: true }
   | { ok: false; disabled: false; message: string };
 
+type Row = Record<string, unknown>;
+
 async function fetchAll(): Promise<{
-  events: Record<string, unknown>[];
-  producers: Record<string, unknown>[];
-  staff: Record<string, unknown>[];
-  shifts: Record<string, unknown>[];
+  events: Row[];
+  producers: Row[];
+  event_summaries: Row[];
+  summary_tickets: Row[];
+  payments: Row[];
 }> {
-  const [events, producers, staff, shifts] = await Promise.all([
+  const [events, producers, eventSummaries, summaryTickets] = await Promise.all([
     supabase.from("events").select("*"),
     supabase.from("producers").select("*"),
-    supabase.from("staff").select("*"),
-    supabase.from("shifts").select("*"),
+    supabase.from("event_summaries").select("*"),
+    supabase.from("summary_tickets").select("*"),
   ]);
   if (events.error) throw events.error;
   if (producers.error) throw producers.error;
-  if (staff.error) throw staff.error;
-  if (shifts.error) throw shifts.error;
+  if (eventSummaries.error) throw eventSummaries.error;
+  if (summaryTickets.error) throw summaryTickets.error;
+
+  const eventsRows = (events.data ?? []) as Row[];
+  const payments = eventsRows.filter((e) =>
+    PAYMENT_STATUSES.includes(String(e.status)),
+  );
+
   return {
-    events: (events.data ?? []) as Record<string, unknown>[],
-    producers: (producers.data ?? []) as Record<string, unknown>[],
-    staff: (staff.data ?? []) as Record<string, unknown>[],
-    shifts: (shifts.data ?? []) as Record<string, unknown>[],
+    events: eventsRows,
+    producers: (producers.data ?? []) as Row[],
+    event_summaries: (eventSummaries.data ?? []) as Row[],
+    summary_tickets: (summaryTickets.data ?? []) as Row[],
+    payments,
   };
 }
 
@@ -37,9 +48,18 @@ async function generateXlsxBytes(): Promise<Uint8Array> {
   const tables = await fetchAll();
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tables.events), "events");
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.json_to_sheet(tables.event_summaries),
+    "event_summaries",
+  );
+  XLSX.utils.book_append_sheet(
+    wb,
+    XLSX.utils.json_to_sheet(tables.summary_tickets),
+    "summary_tickets",
+  );
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tables.payments), "payments");
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tables.producers), "producers");
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tables.staff), "staff");
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tables.shifts), "shifts");
   const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
   return new Uint8Array(buf as ArrayBuffer);
 }
