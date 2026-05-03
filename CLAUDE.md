@@ -71,23 +71,20 @@ Adding a column or table: run the `ALTER TABLE` / `CREATE TABLE` directly in the
 - Prod build: `npm run tauri build`.
 - Clear local session: sign out via the UI button, or clear site data for the app's web view.
 
-## Drive backup (auto + manual)
-The app exports the full DB as `ozen-manager.xlsx` to a shared Google Drive folder. Two triggers: the sidebar footer button (manual), and an in-app auto-run — `BackupStatus` checks `localStorage.ozen.backup.lastAt` on mount and every hour thereafter; when ≥ 24h have elapsed it runs silently and updates the timestamp. Any signed-in user opening the app can trigger the daily run, so the window lines up with real usage. Uses a service account; see setup below. Since Supabase is the source of truth, this is for human-readable reporting only — not a sync mechanism.
+## Drive backup (admin-only, auto + manual)
+The app exports the full DB as `ozen-manager.xlsx` to a shared Google Drive folder (hardcoded folder id `1Sqs6KC8pjrjbwmNuoPpqTQBIeOehM76b` in `src-tauri/src/drive_backup.rs`). Uses the **signed-in user's own Google OAuth token** (drive.file scope) — service accounts don't work for regular Drive folders because they have no storage quota (`storageQuotaExceeded` 403).
 
-Setup (one-time per machine):
-1. Create a GCP service account, download JSON key.
-2. Share the Drive folder with the service account's `client_email` as Editor.
-3. Create `~/Library/Application Support/com.gilmaurer.ozenmanager/drive-backup.json`:
-   ```json
-   {
-     "folder_id": "1Sqs6KC8pjrjbwmNuoPpqTQBIeOehM76b",
-     "service_account": { ...full JSON key contents... }
-   }
-   ```
+Gated to admins (see `src/features/auth/useIsAdmin.ts`, `ADMIN_EMAILS`): only those accounts see the sidebar button and run the auto-job. This guarantees a single authoritative `ozen-manager.xlsx` file rather than one per user — the drive.file scope would otherwise prevent users from seeing each other's creations.
 
-Without this file the button shows `ייצוא לא מוגדר`; the app itself keeps working.
+Two triggers:
+- **Manual**: sidebar footer button.
+- **Auto every 24h**: `BackupStatus` persists `localStorage.ozen.backup.lastAt`, checks on mount and hourly thereafter, fires silently when stale.
 
-Rust implementation: `src-tauri/src/drive_backup.rs`. Frontend: `src/services/backup.ts` + `src/components/BackupStatus.tsx`.
+Setup: nothing per-machine. As long as an admin signs in with Google, the OAuth token grants drive.file access and they can patch the shared file. If the token is missing (older session, revoked consent), the button shows `שגיאה בייצוא` with a tooltip asking the admin to sign out and back in.
+
+Since Supabase is the source of truth, this is for human-readable reporting/snapshots — not a sync mechanism.
+
+Rust implementation: `src-tauri/src/drive_backup.rs`. Frontend: `src/services/backup.ts` + `src/components/BackupStatus.tsx` + `src/features/auth/useIsAdmin.ts`.
 
 ## Deferred / out of scope (don't build unless asked)
 - Guest lists / ticketing

@@ -1,10 +1,20 @@
+// Uploads the full-DB xlsx to Google Drive using the *signed-in user's*
+// OAuth access token (drive.file scope). Service accounts can't own Drive
+// storage (storageQuotaExceeded 403), so we reuse the same user-OAuth
+// pattern already used by drive_upload.rs for invoices.
+//
+// Only admin users run the backup — enforced on the frontend — so there is
+// a single authoritative "ozen-manager.xlsx" in the folder. The file is
+// created by an admin and patched on subsequent runs via drive.file scope.
+
 use reqwest::multipart::{Form, Part};
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::drive_client;
-
 const FILE_NAME: &str = "ozen-manager.xlsx";
+const XLSX_MIME: &str =
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const BACKUP_FOLDER_ID: &str = "1Sqs6KC8pjrjbwmNuoPpqTQBIeOehM76b";
 
 #[derive(Deserialize)]
 struct FileListResponse {
@@ -63,10 +73,7 @@ async fn update_file(
     let resp = client
         .patch(&url)
         .bearer_auth(token)
-        .header(
-            reqwest::header::CONTENT_TYPE,
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
+        .header(reqwest::header::CONTENT_TYPE, XLSX_MIME)
         .body(bytes)
         .send()
         .await
@@ -92,10 +99,11 @@ async fn create_file(
     })
     .to_string();
 
-    let metadata_part = Part::text(metadata).mime_str("application/json; charset=UTF-8")
+    let metadata_part = Part::text(metadata)
+        .mime_str("application/json; charset=UTF-8")
         .map_err(|e| format!("metadata mime: {}", e))?;
     let media_part = Part::bytes(bytes)
-        .mime_str("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        .mime_str(XLSX_MIME)
         .map_err(|e| format!("media mime: {}", e))?;
 
     let form = Form::new()
@@ -119,19 +127,21 @@ async fn create_file(
 }
 
 #[tauri::command]
-pub async fn drive_backup(xlsx_bytes: Vec<u8>) -> Result<(), String> {
-    let cfg = match drive_client::read_config()? {
-        Some(c) => c,
-        None => return Err("backup not configured".to_string()),
-    };
+pub async fn drive_backup(
+    xlsx_bytes: Vec<u8>,
+    access_token: String,
+) -> Result<(), String> {
+    if access_token.is_empty() {
+        return Err(
+            "missing Google access token; sign out and sign in again".to_string(),
+        );
+    }
 
-    let token = drive_client::get_access_token(&cfg.service_account).await?;
     let client = reqwest::Client::new();
-
-    let existing = find_existing_file(&client, &token, &cfg.folder_id).await?;
+    let existing = find_existing_file(&client, &access_token, BACKUP_FOLDER_ID).await?;
     match existing {
-        Some(id) => update_file(&client, &token, &id, xlsx_bytes).await?,
-        None => create_file(&client, &token, &cfg.folder_id, xlsx_bytes).await?,
+        Some(id) => update_file(&client, &access_token, &id, xlsx_bytes).await?,
+        None => create_file(&client, &access_token, BACKUP_FOLDER_ID, xlsx_bytes).await?,
     }
     Ok(())
 }

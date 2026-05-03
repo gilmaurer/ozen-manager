@@ -5,6 +5,7 @@ import ozenLogo from "./assets/ozen-logo.png";
 import { BackupStatus } from "./components/BackupStatus";
 import { DialogProvider, useDialog } from "./components/dialog";
 import { AuthGate } from "./features/auth/AuthGate";
+import { useIsAdmin } from "./features/auth/useIsAdmin";
 import { supabase } from "./db/supabase";
 import { EnumsProvider } from "./services/enums";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
@@ -18,24 +19,6 @@ import { PaymentsPage } from "./features/payments/PaymentsPage";
 import { UpdaterProvider } from "./features/updates/UpdaterProvider";
 import { UpdateBanner } from "./features/updates/UpdateBanner";
 import { UpdateCheckButton } from "./features/updates/UpdateCheckButton";
-
-const ADMIN_EMAILS = ["maurer.gil@gmail.com", "booking@ozenlive.com"];
-
-function useIsAdmin(): boolean {
-  const [isAdmin, setIsAdmin] = useState(false);
-  useEffect(() => {
-    let active = true;
-    supabase.auth.getUser().then(({ data }) => {
-      if (!active) return;
-      const email = data.user?.email?.toLowerCase() ?? "";
-      setIsAdmin(ADMIN_EMAILS.includes(email));
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-  return isAdmin;
-}
 
 function OfflineBanner() {
   const [offline, setOffline] = useState(

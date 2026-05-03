@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { runBackup } from "../services/backup";
+import { useIsAdmin } from "../features/auth/useIsAdmin";
 
 type State =
   | { kind: "idle" }
   | { kind: "running" }
   | { kind: "done"; at: Date }
-  | { kind: "disabled" }
   | { kind: "error"; message: string };
 
 const TIME_FMT = new Intl.DateTimeFormat("he-IL", {
@@ -30,6 +30,7 @@ function writeLastBackup(d: Date): void {
 }
 
 export function BackupStatus() {
+  const isAdmin = useIsAdmin();
   const [state, setState] = useState<State>(() => {
     const last = readLastBackup();
     return last ? { kind: "done", at: last } : { kind: "idle" };
@@ -47,7 +48,7 @@ export function BackupStatus() {
       writeLastBackup(now);
       setState({ kind: "done", at: now });
     } else if (res.disabled) {
-      setState({ kind: "disabled" });
+      setState({ kind: "idle" });
     } else {
       setState({ kind: "error", message: res.message });
     }
@@ -55,6 +56,7 @@ export function BackupStatus() {
   }, []);
 
   useEffect(() => {
+    if (!isAdmin) return;
     let cancelled = false;
     let intervalId: number | null = null;
 
@@ -63,12 +65,7 @@ export function BackupStatus() {
       const last = readLastBackup();
       const stale = !last || Date.now() - last.getTime() >= DAY_MS;
       if (!stale) return;
-      const res = await runNow();
-      if (cancelled) return;
-      if (res && !res.ok && res.disabled && intervalId != null) {
-        window.clearInterval(intervalId);
-        intervalId = null;
-      }
+      await runNow();
     }
 
     void maybeAutoRun();
@@ -78,7 +75,9 @@ export function BackupStatus() {
       cancelled = true;
       if (intervalId != null) window.clearInterval(intervalId);
     };
-  }, [runNow]);
+  }, [isAdmin, runNow]);
+
+  if (!isAdmin) return null;
 
   async function handleClick() {
     await runNow();
@@ -95,11 +94,6 @@ export function BackupStatus() {
     label = "שגיאה בייצוא";
     className += " backup-status-error";
     title = state.message;
-  } else if (state.kind === "disabled") {
-    label = "ייצוא לא מוגדר";
-    className += " backup-status-disabled";
-    title =
-      "כדי להפעיל ייצוא ל-Google Drive, יש ליצור drive-backup.json ב-~/Library/Application Support/com.gilmaurer.ozenmanager/";
   }
 
   return (

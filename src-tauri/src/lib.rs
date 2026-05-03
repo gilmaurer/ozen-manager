@@ -1,6 +1,5 @@
 mod auth_loopback;
 mod drive_backup;
-mod drive_client;
 mod drive_upload;
 
 #[tauri::command]

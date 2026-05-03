@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import * as XLSX from "xlsx";
 import { supabase } from "../db/supabase";
 
-const NOT_CONFIGURED = "backup not configured";
+const MISSING_TOKEN = "missing Google access token";
 
 export type BackupResult =
   | { ok: true }
@@ -46,12 +46,35 @@ async function generateXlsxBytes(): Promise<Uint8Array> {
 
 export async function runBackup(): Promise<BackupResult> {
   try {
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.provider_token ?? "";
+    if (!token) {
+      return {
+        ok: false,
+        disabled: false,
+        message:
+          "אין הרשאת גישה ל-Google Drive. התנתק והתחבר מחדש כדי לאשר את ההרשאה.",
+      };
+    }
     const bytes = await generateXlsxBytes();
-    await invoke("drive_backup", { xlsxBytes: Array.from(bytes) });
+    await invoke("drive_backup", {
+      xlsxBytes: Array.from(bytes),
+      accessToken: token,
+    });
     return { ok: true };
   } catch (e: unknown) {
-    const message = typeof e === "string" ? e : (e as { message?: string })?.message ?? String(e);
-    if (message === NOT_CONFIGURED) return { ok: false, disabled: true };
+    const message =
+      typeof e === "string"
+        ? e
+        : (e as { message?: string })?.message ?? String(e);
+    if (message.includes(MISSING_TOKEN)) {
+      return {
+        ok: false,
+        disabled: false,
+        message:
+          "אין הרשאת גישה ל-Google Drive. התנתק והתחבר מחדש כדי לאשר את ההרשאה.",
+      };
+    }
     return { ok: false, disabled: false, message };
   }
 }
