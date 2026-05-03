@@ -71,8 +71,8 @@ Adding a column or table: run the `ALTER TABLE` / `CREATE TABLE` directly in the
 - Prod build: `npm run tauri build`.
 - Clear local session: sign out via the UI button, or clear site data for the app's web view.
 
-## Drive backup (manual export)
-The app can export the full DB as `ozen-manager.xlsx` to a shared Google Drive folder via the sidebar footer button. Uses a service account; see setup below. Since Supabase is the source of truth, this is for human-readable reporting only — not a sync mechanism.
+## Drive backup (auto + manual)
+The app exports the full DB as `ozen-manager.xlsx` to a shared Google Drive folder. Two triggers: the sidebar footer button (manual), and an in-app auto-run — `BackupStatus` checks `localStorage.ozen.backup.lastAt` on mount and every hour thereafter; when ≥ 24h have elapsed it runs silently and updates the timestamp. Any signed-in user opening the app can trigger the daily run, so the window lines up with real usage. Uses a service account; see setup below. Since Supabase is the source of truth, this is for human-readable reporting only — not a sync mechanism.
 
 Setup (one-time per machine):
 1. Create a GCP service account, download JSON key.
