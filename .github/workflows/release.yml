@@ -18,6 +18,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Capture tag commit message for release notes
+        id: notes
+        shell: bash
+        run: |
+          {
+            echo 'body<<EOF'
+            git log -1 --pretty=%B
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -46,7 +56,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Ozen Manager ${{ github.ref_name }}"
-          releaseBody: "Windows `.exe` and macOS `.dmg` installers. Download the one for your OS."
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
