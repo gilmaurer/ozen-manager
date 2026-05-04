@@ -136,6 +136,19 @@ export async function updateEventCheckNumber(
   });
 }
 
+export async function updateEventCheckDate(
+  id: number,
+  check_date: string | null,
+): Promise<void> {
+  return withRetry(async () => {
+    const { error } = await supabase
+      .from("events")
+      .update({ check_date })
+      .eq("id", id);
+    if (error) throw error;
+  });
+}
+
 export async function createEvent(input: EventInput): Promise<number> {
   return withRetry(async () => {
     const { data, error } = await supabase

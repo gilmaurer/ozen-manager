@@ -4,12 +4,21 @@ interface Props {
   value: string;
   onChange: (next: string) => void;
   disabled?: boolean;
+  allowedCodes?: readonly string[];
 }
 
-export function InlineStatusSelect({ value, onChange, disabled }: Props) {
+export function InlineStatusSelect({
+  value,
+  onChange,
+  disabled,
+  allowedCodes,
+}: Props) {
   const { statuses, statusByCode } = useEnums();
   const current = statusByCode[value];
   const color = current?.color ?? "gray";
+  const options = allowedCodes
+    ? statuses.filter((s) => allowedCodes.includes(s.code))
+    : statuses;
   return (
     <select
       className={`badge badge-color-${color} status-select`}
@@ -21,7 +30,7 @@ export function InlineStatusSelect({ value, onChange, disabled }: Props) {
       {!current && (
         <option value={value}>{value}</option>
       )}
-      {statuses.map((s) => (
+      {options.map((s) => (
         <option key={s.code} value={s.code}>
           {s.label}
         </option>
