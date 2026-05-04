@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import * as XLSX from "xlsx";
 import { supabase } from "../db/supabase";
+import { withFreshProviderToken } from "./googleReauth";
 
 const MISSING_TOKEN = "missing Google access token";
 const PAYMENT_STATUSES = ["waiting_invoice", "waiting_payment", "done"];
@@ -66,20 +67,12 @@ async function generateXlsxBytes(): Promise<Uint8Array> {
 
 export async function runBackup(): Promise<BackupResult> {
   try {
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.provider_token ?? "";
-    if (!token) {
-      return {
-        ok: false,
-        disabled: false,
-        message:
-          "אין הרשאת גישה ל-Google Drive. התנתק והתחבר מחדש כדי לאשר את ההרשאה.",
-      };
-    }
     const bytes = await generateXlsxBytes();
-    await invoke("drive_backup", {
-      xlsxBytes: Array.from(bytes),
-      accessToken: token,
+    await withFreshProviderToken(async (token) => {
+      await invoke("drive_backup", {
+        xlsxBytes: Array.from(bytes),
+        accessToken: token,
+      });
     });
     return { ok: true };
   } catch (e: unknown) {

@@ -56,9 +56,13 @@ Adding a column or table: run the `ALTER TABLE` / `CREATE TABLE` directly in the
 
 ## Auth flow
 - First launch: `AuthGate` (`src/features/auth/AuthGate.tsx`) shows `LoginPage` — one "התחבר עם Google" button.
-- Click → `supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: "ozen-manager://auth/callback" } })`.
-- System browser handles Google consent; Google redirects to Supabase; Supabase redirects to the custom scheme. The deep-link handler in `AuthGate` calls `exchangeCodeForSession` to complete.
-- Session persists in localStorage. Sign out via the sidebar footer button.
+- Click → Rust opens a localhost loopback listener (`start_auth_listener` in `src-tauri/src/auth_loopback.rs`), frontend asks Supabase for an OAuth URL with `redirectTo: http://localhost:<port>/auth/callback`, `skipBrowserRedirect: true`, and `access_type=offline` + `prompt=consent`. System browser opens; Google returns to the loopback; the captured code is exchanged via `supabase.auth.exchangeCodeForSession`.
+- Session persists in localStorage. Sign out via the sidebar user chip.
+
+### Google token refresh
+Google `provider_token`s expire after ~1 hour and Supabase does not auto-refresh them. Drive / Gmail calls must go through `withFreshProviderToken()` from `src/services/googleReauth.ts` — it runs the given operation with the current token, and on 401 silently re-runs the loopback OAuth flow with `prompt=none` + `login_hint` to mint a fresh token without showing any dialogs (assuming Google still has an active session in the default browser), then retries once. If the silent refresh fails (user signed out of Google, timeout, etc.), the underlying error surfaces so the caller can fall back to an interactive re-login message.
+
+Both `src/services/driveUpload.ts` (invoice upload) and `src/services/backup.ts` (nightly xlsx export) use this wrapper — any new code that invokes a Tauri command expecting a Google access token should too.
 
 ## Network resilience
 - No true offline — the app needs net to open.
