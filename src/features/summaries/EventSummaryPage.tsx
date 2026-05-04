@@ -557,6 +557,10 @@ export function EventSummaryPage() {
     ? clubTicketShareOf(event, ticketBaseForDeal)
     : 0;
   const dealLabelText = event ? dealLabel(event) : "—";
+  const producerDealLabelText =
+    event && event.deal_type === "split" && event.deal != null
+      ? `${100 - event.deal}%`
+      : dealLabelText;
   const clubTicketIncome = clubTicketShare + ozenCommissionTotal;
   const clubTotalRevenue = clubTicketIncome + barIncome;
   const expenses = staffTotal + clubCampaignExpense + barExp;
@@ -1153,7 +1157,7 @@ export function EventSummaryPage() {
               <span dir="ltr">{formatMoney(ticketBaseForDeal)}</span>
             </div>
             <div className="muted" style={{ fontSize: 13 }}>
-              דיל: <span dir="ltr">{dealLabelText}</span>
+              דיל: <span dir="ltr">{producerDealLabelText}</span>
             </div>
             <div
               style={{
