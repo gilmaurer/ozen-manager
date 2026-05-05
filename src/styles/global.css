@@ -302,6 +302,15 @@ h3 { font-size: 16px; }
   color: var(--text);
 }
 .btn-secondary:hover { background: var(--bg-panel-hover); }
+.btn-secondary.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+.btn-secondary.active:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
 
 .btn-danger {
   background: transparent;
