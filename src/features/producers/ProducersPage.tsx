@@ -12,6 +12,9 @@ import { Modal } from "../../components/Modal";
 import { useDialog } from "../../components/dialog";
 import { ProducerForm } from "./ProducerForm";
 
+const PAGE_SIZES = [20, 50, 100] as const;
+type PageSize = (typeof PAGE_SIZES)[number];
+
 export function ProducersPage() {
   const { ask, notify } = useDialog();
   const [producers, setProducers] = useState<ProducerWithCount[]>([]);
@@ -19,6 +22,8 @@ export function ProducersPage() {
   const [editing, setEditing] = useState<ProducerWithCount | null>(null);
   const [creating, setCreating] = useState(false);
   const [q, setQ] = useState("");
+  const [pageSize, setPageSize] = useState<PageSize>(20);
+  const [page, setPage] = useState(0);
 
   const visible = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -29,6 +34,18 @@ export function ProducersPage() {
       a.name.localeCompare(b.name, "he"),
     );
   }, [producers, q]);
+
+  // Reset to the first page whenever the filtered set or page size changes.
+  useEffect(() => {
+    setPage(0);
+  }, [q, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(visible.length / pageSize));
+  const currentPage = Math.min(page, totalPages - 1);
+  const pageRows = visible.slice(
+    currentPage * pageSize,
+    (currentPage + 1) * pageSize,
+  );
 
   async function refresh() {
     setLoading(true);
@@ -98,6 +115,30 @@ export function ProducersPage() {
                   נקה סינון
                 </button>
               )}
+              <div
+                style={{
+                  marginInlineStart: "auto",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+              >
+                <span className="muted" style={{ fontSize: 13 }}>
+                  הצג בעמוד:
+                </span>
+                <select
+                  value={pageSize}
+                  onChange={(e) =>
+                    setPageSize(Number(e.target.value) as PageSize)
+                  }
+                >
+                  {PAGE_SIZES.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             {visible.length === 0 ? (
               <div className="empty">אין תוצאות לסינון.</div>
@@ -113,7 +154,7 @@ export function ProducersPage() {
               </tr>
             </thead>
             <tbody>
-              {visible.map((p) => (
+              {pageRows.map((p) => (
                 <tr key={p.id}>
                   <td>
                     <Link
@@ -149,6 +190,38 @@ export function ProducersPage() {
               ))}
             </tbody>
           </table>
+            )}
+            {totalPages > 1 && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  gap: 12,
+                  marginTop: 12,
+                }}
+              >
+                <button
+                  className="btn btn-secondary btn-sm"
+                  disabled={currentPage === 0}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  הקודם
+                </button>
+                <span className="muted" style={{ fontSize: 13 }}>
+                  עמוד {currentPage + 1} מתוך {totalPages} ({visible.length}{" "}
+                  מפיקים)
+                </span>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  disabled={currentPage >= totalPages - 1}
+                  onClick={() =>
+                    setPage((p) => Math.min(totalPages - 1, p + 1))
+                  }
+                >
+                  הבא
+                </button>
+              </div>
             )}
           </>
         )}
