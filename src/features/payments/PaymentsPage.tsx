@@ -54,7 +54,11 @@ function filtersActive(f: Filters): boolean {
   );
 }
 
-function matches(f: Filters, e: EventWithProducer): boolean {
+function matches(
+  f: Filters,
+  e: EventWithProducer,
+  allTimes: boolean,
+): boolean {
   if (f.q && !e.name.toLowerCase().includes(f.q.toLowerCase())) return false;
   if (f.type && e.type !== f.type) return false;
   if (
@@ -64,8 +68,10 @@ function matches(f: Filters, e: EventWithProducer): boolean {
       .includes(f.producer.toLowerCase())
   )
     return false;
-  if (f.from && e.date < f.from) return false;
-  if (f.to && e.date > f.to) return false;
+  if (!allTimes) {
+    if (f.from && e.date < f.from) return false;
+    if (f.to && e.date > f.to) return false;
+  }
   return true;
 }
 
@@ -130,6 +136,7 @@ export function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [uploadingId, setUploadingId] = useState<number | null>(null);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [allTimes, setAllTimes] = useState(false);
   const [tab, setTab] = useState<Tab>("waiting_invoice");
   const [monthCursor, setMonthCursor] = useState<Date>(() =>
     startOfMonth(new Date()),
@@ -157,11 +164,12 @@ export function PaymentsPage() {
   }, []);
 
   const rows = useMemo(() => {
-    const applyMonth = filters.from === "" && filters.to === "";
+    const applyMonth =
+      !allTimes && filters.from === "" && filters.to === "";
     const { start, end } = monthBounds(monthCursor);
     return events
       .filter((e) => e.status === tab)
-      .filter((e) => matches(filters, e))
+      .filter((e) => matches(filters, e, allTimes))
       .filter((e) => {
         if (!applyMonth) return true;
         return e.date >= start && e.date <= end;
@@ -175,7 +183,7 @@ export function PaymentsPage() {
       })
       .sort((a, b) => b.event.date.localeCompare(a.event.date));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [events, filters, tab, aggs, monthCursor]);
+  }, [events, filters, tab, aggs, monthCursor, allTimes]);
 
   function totalsFor(e: EventWithProducer): ProducerTotals {
     const a = aggs.get(e.id);
@@ -305,35 +313,40 @@ export function PaymentsPage() {
             <div style={{ display: "flex", gap: 8 }}>
               <button
                 className="btn btn-secondary btn-sm"
-                onClick={() =>
+                onClick={() => {
+                  setAllTimes(false);
                   setMonthCursor(
                     new Date(
                       monthCursor.getFullYear(),
                       monthCursor.getMonth() + 1,
                       1,
                     ),
-                  )
-                }
+                  );
+                }}
               >
                 ›
               </button>
               <button
                 className="btn btn-secondary btn-sm"
-                onClick={() => setMonthCursor(startOfMonth(new Date()))}
+                onClick={() => {
+                  setAllTimes(false);
+                  setMonthCursor(startOfMonth(new Date()));
+                }}
               >
                 היום
               </button>
               <button
                 className="btn btn-secondary btn-sm"
-                onClick={() =>
+                onClick={() => {
+                  setAllTimes(false);
                   setMonthCursor(
                     new Date(
                       monthCursor.getFullYear(),
                       monthCursor.getMonth() - 1,
                       1,
                     ),
-                  )
-                }
+                  );
+                }}
               >
                 ‹
               </button>
@@ -387,7 +400,10 @@ export function PaymentsPage() {
               className="filter-date"
               type="date"
               value={filters.from}
-              onChange={(e) => updateFilter("from", e.target.value)}
+              onChange={(e) => {
+                setAllTimes(false);
+                updateFilter("from", e.target.value);
+              }}
               aria-label="מתאריך"
             />
             <span className="filter-date-label">עד</span>
@@ -395,13 +411,32 @@ export function PaymentsPage() {
               className="filter-date"
               type="date"
               value={filters.to}
-              onChange={(e) => updateFilter("to", e.target.value)}
+              onChange={(e) => {
+                setAllTimes(false);
+                updateFilter("to", e.target.value);
+              }}
               aria-label="עד תאריך"
             />
-            {filtersActive(filters) && (
+            <button
+              className={`btn btn-secondary btn-sm${allTimes ? " active" : ""}`}
+              onClick={() => {
+                setAllTimes((prev) => !prev);
+                if (!allTimes) {
+                  updateFilter("from", "");
+                  updateFilter("to", "");
+                }
+              }}
+              title="הצג תשלומים מכל התאריכים"
+            >
+              כל הזמנים
+            </button>
+            {(filtersActive(filters) || allTimes) && (
               <button
                 className="btn btn-secondary btn-sm"
-                onClick={() => setFilters(EMPTY_FILTERS)}
+                onClick={() => {
+                  setFilters(EMPTY_FILTERS);
+                  setAllTimes(false);
+                }}
               >
                 נקה סינון
               </button>

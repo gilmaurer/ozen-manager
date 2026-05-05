@@ -67,7 +67,29 @@ function filtersActive(f: Filters): boolean {
   );
 }
 
-function matches(f: Filters, e: EventWithProducer): boolean {
+type SummarySortKey =
+  | "name"
+  | "date"
+  | "status"
+  | "producer"
+  | "tickets"
+  | "ticketsRevenue"
+  | "deal"
+  | "clubTicketIncome"
+  | "bar"
+  | "counter"
+  | "barPerHead"
+  | "clubTotalRevenue"
+  | "expenses"
+  | "net";
+
+type SummarySort = { key: SummarySortKey; dir: "asc" | "desc" };
+
+function matches(
+  f: Filters,
+  e: EventWithProducer,
+  allTimes: boolean,
+): boolean {
   if (f.q && !e.name.toLowerCase().includes(f.q.toLowerCase())) return false;
   if (f.status && e.status !== f.status) return false;
   if (f.type && e.type !== f.type) return false;
@@ -78,8 +100,10 @@ function matches(f: Filters, e: EventWithProducer): boolean {
       .includes(f.producer.toLowerCase())
   )
     return false;
-  if (f.from && e.date < f.from) return false;
-  if (f.to && e.date > f.to) return false;
+  if (!allTimes) {
+    if (f.from && e.date < f.from) return false;
+    if (f.to && e.date > f.to) return false;
+  }
   return true;
 }
 
@@ -98,9 +122,14 @@ export function EventsPage() {
     return saved === "summaries" ? "summaries" : "all";
   });
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [allTimes, setAllTimes] = useState(false);
   const [monthCursor, setMonthCursor] = useState<Date>(() =>
     startOfMonth(new Date()),
   );
+  const [summarySort, setSummarySort] = useState<SummarySort>({
+    key: "date",
+    dir: "desc",
+  });
   const [summaryAggs, setSummaryAggs] = useState<Map<number, SummaryAggregate>>(
     () => new Map(),
   );
@@ -144,15 +173,98 @@ export function EventsPage() {
 
   const filteredEvents = useMemo(() => {
     const applyMonth =
-      view === "list" && filters.from === "" && filters.to === "";
+      view === "list" &&
+      !allTimes &&
+      filters.from === "" &&
+      filters.to === "";
     const { start, end } = monthBounds(monthCursor);
     return events.filter((e) => {
       if (scope === "summaries" && !e.has_summary) return false;
-      if (!matches(filters, e)) return false;
+      if (!matches(filters, e, allTimes)) return false;
       if (applyMonth && (e.date < start || e.date > end)) return false;
       return true;
     });
-  }, [events, filters, scope, view, monthCursor]);
+  }, [events, filters, scope, view, monthCursor, allTimes]);
+
+  const summaryRows = useMemo(() => {
+    const derived = filteredEvents.map((e) => {
+      const a = summaryAggs.get(e.id);
+      const ticketsRevenue = a?.tickets_revenue ?? 0;
+      const presaleRevenue = a?.presale_revenue ?? 0;
+      const boxOfficeRevenue = a?.box_office_revenue ?? 0;
+      const presaleCommissions = a?.presale_commissions ?? 0;
+      const ozenCommission = a?.ozen_commission ?? 0;
+      const barTotal = a?.bar_total ?? 0;
+      const ticketBase = presaleRevenue - presaleCommissions + boxOfficeRevenue;
+      const clubTicketShare = clubTicketShareOf(e, ticketBase);
+      const clubTicketIncome = clubTicketShare + ozenCommission;
+      const clubTotalRevenue = clubTicketIncome + barTotal;
+      const staffCost = e.type
+        ? staffCostByType.get(`${e.type}|${e.sub_type ?? ""}`) ?? 0
+        : 0;
+      const campaignPct = e.campaign ?? 0;
+      const campaignAmount = e.campaign_amount ?? 0;
+      const clubCampaignExpense = campaignAmount * (campaignPct / 100);
+      const expenses = staffCost + clubCampaignExpense;
+      const net = clubTotalRevenue - expenses;
+      const counter = a?.counter ?? 0;
+      const barPerHead = counter > 0 ? barTotal / counter : 0;
+      const dealNumeric =
+        e.deal_type === "fit_price"
+          ? e.deal_fit_price ?? 0
+          : e.deal ?? 0;
+      return {
+        event: e,
+        agg: a,
+        ticketsRevenue,
+        barTotal,
+        clubTicketIncome,
+        clubTotalRevenue,
+        expenses,
+        net,
+        counter,
+        barPerHead,
+        sortValues: {
+          name: e.name,
+          date: e.date,
+          status: e.status,
+          producer: e.producer_name ?? "",
+          tickets: a?.tickets_count ?? 0,
+          ticketsRevenue,
+          deal: dealNumeric,
+          clubTicketIncome,
+          bar: barTotal,
+          counter,
+          barPerHead,
+          clubTotalRevenue,
+          expenses,
+          net,
+        } as Record<SummarySortKey, string | number>,
+      };
+    });
+    derived.sort((a, b) => {
+      const av = a.sortValues[summarySort.key];
+      const bv = b.sortValues[summarySort.key];
+      let cmp = 0;
+      if (typeof av === "number" && typeof bv === "number") cmp = av - bv;
+      else cmp = String(av).localeCompare(String(bv), "he");
+      return summarySort.dir === "asc" ? cmp : -cmp;
+    });
+    return derived;
+  }, [filteredEvents, summaryAggs, staffCostByType, summarySort]);
+
+  function toggleSummarySort(key: SummarySortKey) {
+    setSummarySort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "desc" },
+    );
+  }
+
+  function sortArrow(key: SummarySortKey): string {
+    if (summarySort.key !== key) return "";
+    return summarySort.dir === "asc" ? " ↑" : " ↓";
+  }
 
   async function resolveProducerId(name: string | null): Promise<number | null> {
     if (!name) return null;
@@ -282,35 +394,40 @@ export function EventsPage() {
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
                     className="btn btn-secondary btn-sm"
-                    onClick={() =>
+                    onClick={() => {
+                      setAllTimes(false);
                       setMonthCursor(
                         new Date(
                           monthCursor.getFullYear(),
                           monthCursor.getMonth() + 1,
                           1,
                         ),
-                      )
-                    }
+                      );
+                    }}
                   >
                     ›
                   </button>
                   <button
                     className="btn btn-secondary btn-sm"
-                    onClick={() => setMonthCursor(startOfMonth(new Date()))}
+                    onClick={() => {
+                      setAllTimes(false);
+                      setMonthCursor(startOfMonth(new Date()));
+                    }}
                   >
                     היום
                   </button>
                   <button
                     className="btn btn-secondary btn-sm"
-                    onClick={() =>
+                    onClick={() => {
+                      setAllTimes(false);
                       setMonthCursor(
                         new Date(
                           monthCursor.getFullYear(),
                           monthCursor.getMonth() - 1,
                           1,
                         ),
-                      )
-                    }
+                      );
+                    }}
                   >
                     ‹
                   </button>
@@ -376,7 +493,10 @@ export function EventsPage() {
                 className="filter-date"
                 type="date"
                 value={filters.from}
-                onChange={(e) => updateFilter("from", e.target.value)}
+                onChange={(e) => {
+                  setAllTimes(false);
+                  updateFilter("from", e.target.value);
+                }}
                 aria-label="מתאריך"
               />
               <span className="filter-date-label">עד</span>
@@ -384,13 +504,32 @@ export function EventsPage() {
                 className="filter-date"
                 type="date"
                 value={filters.to}
-                onChange={(e) => updateFilter("to", e.target.value)}
+                onChange={(e) => {
+                  setAllTimes(false);
+                  updateFilter("to", e.target.value);
+                }}
                 aria-label="עד תאריך"
               />
+              <button
+                className={`btn btn-secondary btn-sm${allTimes ? " active" : ""}`}
+                onClick={() => {
+                  setAllTimes((prev) => !prev);
+                  if (!allTimes) {
+                    updateFilter("from", "");
+                    updateFilter("to", "");
+                  }
+                }}
+                title="הצג אירועים מכל התאריכים"
+              >
+                כל הזמנים
+              </button>
               {hasFilters && (
                 <button
                   className="btn btn-secondary btn-sm"
-                  onClick={() => setFilters(EMPTY_FILTERS)}
+                  onClick={() => {
+                    setFilters(EMPTY_FILTERS);
+                    setAllTimes(false);
+                  }}
                 >
                   נקה סינון
                 </button>
@@ -408,46 +547,146 @@ export function EventsPage() {
               <table className="centered">
                 <thead>
                   <tr>
-                    <th>שם</th>
-                    <th>תאריך</th>
-                    <th>סטטוס</th>
-                    <th>כרטיסים</th>
-                    <th>הכנסות כרטיסים</th>
-                    <th>דיל</th>
-                    <th>חלק המועדון מכרטיסים</th>
-                    <th>בר</th>
-                    <th>מונה</th>
-                    <th>בר לראש</th>
-                    <th>סה"כ הכנסות למועדון</th>
-                    <th>הוצאות</th>
-                    <th>נטו למועדון</th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleSummarySort("name")}
+                      >
+                        שם{sortArrow("name")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleSummarySort("date")}
+                      >
+                        תאריך{sortArrow("date")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleSummarySort("producer")}
+                      >
+                        מפיק{sortArrow("producer")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleSummarySort("status")}
+                      >
+                        סטטוס{sortArrow("status")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleSummarySort("tickets")}
+                      >
+                        כרטיסים{sortArrow("tickets")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleSummarySort("ticketsRevenue")}
+                      >
+                        הכנסות כרטיסים{sortArrow("ticketsRevenue")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleSummarySort("deal")}
+                      >
+                        דיל{sortArrow("deal")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleSummarySort("clubTicketIncome")}
+                      >
+                        חלק המועדון מכרטיסים{sortArrow("clubTicketIncome")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleSummarySort("bar")}
+                      >
+                        בר{sortArrow("bar")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleSummarySort("counter")}
+                      >
+                        מונה{sortArrow("counter")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleSummarySort("barPerHead")}
+                      >
+                        בר לראש{sortArrow("barPerHead")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleSummarySort("clubTotalRevenue")}
+                      >
+                        סה"כ הכנסות למועדון{sortArrow("clubTotalRevenue")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleSummarySort("expenses")}
+                      >
+                        הוצאות{sortArrow("expenses")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleSummarySort("net")}
+                      >
+                        נטו למועדון{sortArrow("net")}
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredEvents.map((e) => {
-                    const a = summaryAggs.get(e.id);
-                    const ticketsRevenue = a?.tickets_revenue ?? 0;
-                    const presaleRevenue = a?.presale_revenue ?? 0;
-                    const boxOfficeRevenue = a?.box_office_revenue ?? 0;
-                    const presaleCommissions = a?.presale_commissions ?? 0;
-                    const ozenCommission = a?.ozen_commission ?? 0;
-                    const barTotal = a?.bar_total ?? 0;
-                    const ticketBase =
-                      presaleRevenue - presaleCommissions + boxOfficeRevenue;
-                    const clubTicketShare = clubTicketShareOf(e, ticketBase);
-                    const clubTicketIncome = clubTicketShare + ozenCommission;
-                    const clubTotalRevenue = clubTicketIncome + barTotal;
-                    const staffCost = e.type
-                      ? staffCostByType.get(
-                          `${e.type}|${e.sub_type ?? ""}`,
-                        ) ?? 0
-                      : 0;
-                    const campaignPct = e.campaign ?? 0;
-                    const campaignAmount = e.campaign_amount ?? 0;
-                    const clubCampaignExpense =
-                      campaignAmount * (campaignPct / 100);
-                    const expenses = staffCost + clubCampaignExpense;
-                    const net = clubTotalRevenue - expenses;
+                  {summaryRows.map((row) => {
+                    const e = row.event;
+                    const a = row.agg;
+                    const {
+                      ticketsRevenue,
+                      barTotal,
+                      clubTicketIncome,
+                      clubTotalRevenue,
+                      expenses,
+                      net,
+                    } = row;
                     return (
                       <tr key={e.id}>
                         <td>
@@ -465,6 +704,19 @@ export function EventsPage() {
                           style={{ textAlign: "start" }}
                         >
                           {formatDate(e.date)}
+                        </td>
+                        <td>
+                          {e.producer_name && e.producer_id != null ? (
+                            <Link
+                              to={`/producers/${e.producer_id}`}
+                              className="row-value"
+                              dir="auto"
+                            >
+                              {e.producer_name}
+                            </Link>
+                          ) : (
+                            "—"
+                          )}
                         </td>
                         <td>
                           <InlineStatusSelect

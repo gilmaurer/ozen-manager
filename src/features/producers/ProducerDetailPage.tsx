@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type { EventWithProducer, ProducerRow } from "../../db/types";
 import {
@@ -26,6 +26,24 @@ export function ProducerDetailPage() {
   const [events, setEvents] = useState<EventWithProducer[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [page, setPage] = useState(0);
+
+  const PAGE_SIZE = 10;
+  const sortedEvents = useMemo(
+    () => [...events].sort((a, b) => b.date.localeCompare(a.date)),
+    [events],
+  );
+
+  useEffect(() => {
+    setPage(0);
+  }, [sortedEvents.length]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedEvents.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const pageRows = sortedEvents.slice(
+    currentPage * PAGE_SIZE,
+    (currentPage + 1) * PAGE_SIZE,
+  );
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -105,39 +123,73 @@ export function ProducerDetailPage() {
 
       <div className="card">
         <h2>אירועים של המפיק</h2>
-        {events.length === 0 ? (
+        {sortedEvents.length === 0 ? (
           <div className="empty">אין אירועים משויכים למפיק זה.</div>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>שם</th>
-                <th>תאריך</th>
-                <th>סוג</th>
-                <th>סטטוס</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.map((e) => (
-                <tr key={e.id}>
-                  <td>
-                    <Link
-                      to={`/events/${e.id}`}
-                      className="row-value"
-                      dir="auto"
-                    >
-                      {e.name}
-                    </Link>
-                  </td>
-                  <td className="muted">{formatDate(e.date)}</td>
-                  <td>{e.type ? typeByCode[e.type]?.label ?? e.type : "—"}</td>
-                  <td>
-                    <StatusBadge status={e.status} />
-                  </td>
+          <>
+            <table>
+              <thead>
+                <tr>
+                  <th>שם</th>
+                  <th>תאריך</th>
+                  <th>סוג</th>
+                  <th>סטטוס</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pageRows.map((e) => (
+                  <tr key={e.id}>
+                    <td>
+                      <Link
+                        to={`/events/${e.id}`}
+                        className="row-value"
+                        dir="auto"
+                      >
+                        {e.name}
+                      </Link>
+                    </td>
+                    <td className="muted">{formatDate(e.date)}</td>
+                    <td>{e.type ? typeByCode[e.type]?.label ?? e.type : "—"}</td>
+                    <td>
+                      <StatusBadge status={e.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {totalPages > 1 && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  gap: 12,
+                  marginTop: 12,
+                }}
+              >
+                <button
+                  className="btn btn-secondary btn-sm"
+                  disabled={currentPage === 0}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  הקודם
+                </button>
+                <span className="muted" style={{ fontSize: 13 }}>
+                  עמוד {currentPage + 1} מתוך {totalPages} (
+                  {sortedEvents.length} אירועים)
+                </span>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  disabled={currentPage >= totalPages - 1}
+                  onClick={() =>
+                    setPage((p) => Math.min(totalPages - 1, p + 1))
+                  }
+                >
+                  הבא
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 

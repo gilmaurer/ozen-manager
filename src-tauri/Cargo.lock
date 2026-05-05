@@ -2468,7 +2468,7 @@ dependencies = [
 
 [[package]]
 name = "ozen-manager"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "reqwest 0.12.28",
  "serde",

@@ -359,6 +359,20 @@ table.centered select.status-select {
   margin: 0 auto;
 }
 
+.sort-header {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  padding: 0;
+  cursor: pointer;
+}
+.sort-header:hover {
+  color: var(--text);
+}
+
 tr:hover td {
   background: var(--bg-panel-hover);
 }
