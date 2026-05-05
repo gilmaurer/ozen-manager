@@ -23,6 +23,7 @@ import {
   VAT_RATE,
 } from "../summaries/summariesRepo";
 import { pickAndUploadInvoice } from "../../services/driveUpload";
+import { MONTH_FMT, monthBounds, startOfMonth } from "../events/monthNav";
 
 type Tab = "waiting_invoice" | "waiting_payment" | "done";
 const TABS: Tab[] = ["waiting_invoice", "waiting_payment", "done"];
@@ -31,15 +32,26 @@ interface Filters {
   q: string;
   type: EventType | "";
   producer: string;
+  from: string;
+  to: string;
 }
+
 const EMPTY_FILTERS: Filters = {
   q: "",
   type: "",
   producer: "",
+  from: "",
+  to: "",
 };
 
 function filtersActive(f: Filters): boolean {
-  return f.q !== "" || f.type !== "" || f.producer !== "";
+  return (
+    f.q !== "" ||
+    f.type !== "" ||
+    f.producer !== "" ||
+    f.from !== "" ||
+    f.to !== ""
+  );
 }
 
 function matches(f: Filters, e: EventWithProducer): boolean {
@@ -52,6 +64,8 @@ function matches(f: Filters, e: EventWithProducer): boolean {
       .includes(f.producer.toLowerCase())
   )
     return false;
+  if (f.from && e.date < f.from) return false;
+  if (f.to && e.date > f.to) return false;
   return true;
 }
 
@@ -117,6 +131,9 @@ export function PaymentsPage() {
   const [uploadingId, setUploadingId] = useState<number | null>(null);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [tab, setTab] = useState<Tab>("waiting_invoice");
+  const [monthCursor, setMonthCursor] = useState<Date>(() =>
+    startOfMonth(new Date()),
+  );
   const { types, typeByCode, statusByCode } = useEnums();
   const { ask, notify } = useDialog();
 
@@ -139,24 +156,26 @@ export function PaymentsPage() {
     refresh();
   }, []);
 
-  const rows = useMemo(
-    () =>
-      events
-        .filter((e) => e.status === tab)
-        .filter((e) => matches(filters, e))
-        .map((e) => ({ event: e, totals: totalsFor(e) }))
-        .filter(({ totals }) => {
-          if (tab !== "done") return true;
-          const a =
-            Number.isFinite(totals.net) && totals.net !== 0;
-          const b =
-            Number.isFinite(totals.netExVat) && totals.netExVat !== 0;
-          return a && b;
-        })
-        .sort((a, b) => b.event.date.localeCompare(a.event.date)),
+  const rows = useMemo(() => {
+    const applyMonth = filters.from === "" && filters.to === "";
+    const { start, end } = monthBounds(monthCursor);
+    return events
+      .filter((e) => e.status === tab)
+      .filter((e) => matches(filters, e))
+      .filter((e) => {
+        if (!applyMonth) return true;
+        return e.date >= start && e.date <= end;
+      })
+      .map((e) => ({ event: e, totals: totalsFor(e) }))
+      .filter(({ totals }) => {
+        if (tab !== "done") return true;
+        const a = Number.isFinite(totals.net) && totals.net !== 0;
+        const b = Number.isFinite(totals.netExVat) && totals.netExVat !== 0;
+        return a && b;
+      })
+      .sort((a, b) => b.event.date.localeCompare(a.event.date));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [events, filters, tab, aggs],
-  );
+  }, [events, filters, tab, aggs, monthCursor]);
 
   function totalsFor(e: EventWithProducer): ProducerTotals {
     const a = aggs.get(e.id);
@@ -279,6 +298,60 @@ export function PaymentsPage() {
 
       <div className="card">
         {hasEvents && (
+          <div
+            className="calendar-header"
+            style={{ marginBottom: 12 }}
+          >
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() =>
+                  setMonthCursor(
+                    new Date(
+                      monthCursor.getFullYear(),
+                      monthCursor.getMonth() + 1,
+                      1,
+                    ),
+                  )
+                }
+              >
+                ›
+              </button>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => setMonthCursor(startOfMonth(new Date()))}
+              >
+                היום
+              </button>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() =>
+                  setMonthCursor(
+                    new Date(
+                      monthCursor.getFullYear(),
+                      monthCursor.getMonth() - 1,
+                      1,
+                    ),
+                  )
+                }
+              >
+                ‹
+              </button>
+            </div>
+            <div className="month-label">
+              {MONTH_FMT.format(monthCursor)}
+              {(filters.from !== "" || filters.to !== "") && (
+                <span
+                  className="muted"
+                  style={{ fontSize: 13, marginInlineStart: 8 }}
+                >
+                  (סינון תאריכים פעיל)
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+        {hasEvents && (
           <div className="filter-bar">
             <input
               className="filter-search"
@@ -302,12 +375,28 @@ export function PaymentsPage() {
               ))}
             </select>
             <input
-              className="filter-search filter-search-sm"
+              className="filter-search"
               type="text"
               placeholder="חיפוש לפי מפיק"
               dir="auto"
               value={filters.producer}
               onChange={(e) => updateFilter("producer", e.target.value)}
+            />
+            <span className="filter-date-label">מ</span>
+            <input
+              className="filter-date"
+              type="date"
+              value={filters.from}
+              onChange={(e) => updateFilter("from", e.target.value)}
+              aria-label="מתאריך"
+            />
+            <span className="filter-date-label">עד</span>
+            <input
+              className="filter-date"
+              type="date"
+              value={filters.to}
+              onChange={(e) => updateFilter("to", e.target.value)}
+              aria-label="עד תאריך"
             />
             {filtersActive(filters) && (
               <button

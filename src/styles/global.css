@@ -588,9 +588,13 @@ label {
   font-size: 13px;
   padding: 6px 10px;
 }
-.filter-bar .filter-search { flex: 1 1 200px; min-width: 160px; }
-.filter-bar .filter-search.filter-search-sm { flex: 0 1 110px; min-width: 90px; }
+.filter-bar .filter-search { flex: 0 1 120px; min-width: 100px; }
 .filter-bar .filter-date { width: 150px; }
+.filter-bar .filter-date-label {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-inline-end: 2px;
+}
 .filter-bar .filter-spacer { flex: 1; }
 
 .detail-row {

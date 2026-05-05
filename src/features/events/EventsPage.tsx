@@ -364,13 +364,14 @@ export function EventsPage() {
                 ))}
               </select>
               <input
-                className="filter-search filter-search-sm"
+                className="filter-search"
                 type="text"
                 placeholder="חיפוש לפי מפיק"
                 dir="auto"
                 value={filters.producer}
                 onChange={(e) => updateFilter("producer", e.target.value)}
               />
+              <span className="filter-date-label">מ</span>
               <input
                 className="filter-date"
                 type="date"
@@ -378,6 +379,7 @@ export function EventsPage() {
                 onChange={(e) => updateFilter("from", e.target.value)}
                 aria-label="מתאריך"
               />
+              <span className="filter-date-label">עד</span>
               <input
                 className="filter-date"
                 type="date"
@@ -415,6 +417,7 @@ export function EventsPage() {
                     <th>חלק המועדון מכרטיסים</th>
                     <th>בר</th>
                     <th>מונה</th>
+                    <th>בר לראש</th>
                     <th>סה"כ הכנסות למועדון</th>
                     <th>הוצאות</th>
                     <th>נטו למועדון</th>
@@ -489,6 +492,14 @@ export function EventsPage() {
                         </td>
                         <td dir="ltr" style={{ textAlign: "start" }}>
                           {a?.counter ?? "—"}
+                        </td>
+                        <td dir="ltr" style={{ textAlign: "start" }}>
+                          {a?.counter && a.counter > 0
+                            ? `${(barTotal / a.counter).toLocaleString(
+                                "he-IL",
+                                { maximumFractionDigits: 2 },
+                              )} ₪`
+                            : "—"}
                         </td>
                         <td
                           dir="ltr"

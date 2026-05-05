@@ -65,13 +65,26 @@ async function generateXlsxBytes(): Promise<Uint8Array> {
   return new Uint8Array(buf as ArrayBuffer);
 }
 
+function timestampedFileName(): string {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const y = now.getFullYear();
+  const mo = pad(now.getMonth() + 1);
+  const d = pad(now.getDate());
+  const h = pad(now.getHours());
+  const mi = pad(now.getMinutes());
+  return `ozen-manager-${y}-${mo}-${d}-${h}-${mi}.xlsx`;
+}
+
 export async function runBackup(): Promise<BackupResult> {
   try {
     const bytes = await generateXlsxBytes();
+    const fileName = timestampedFileName();
     await withFreshProviderToken(async (token) => {
       await invoke("drive_backup", {
         xlsxBytes: Array.from(bytes),
         accessToken: token,
+        fileName,
       });
     });
     return { ok: true };

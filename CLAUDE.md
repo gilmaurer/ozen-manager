@@ -99,15 +99,23 @@ Rust implementation: `src-tauri/src/drive_backup.rs`. Frontend: `src/services/ba
 
 ## UI conventions
 
+### Filter search inputs (compact, one size)
+All free-text search inputs in `.filter-bar` use a single compact size — `className="filter-search"` (`flex: 0 1 120px; min-width: 100px;` in `src/styles/global.css`). No variants; don't introduce a separate "sm" size. This applies to every table filter across Events, Payments, and Producers, including the name search and the producer search. If a future page introduces a long list with a text filter, reuse the same class.
+
 ### Producer filter
-Whenever a list needs a "filter by producer" control, it is a **free-text search**, not a dropdown — the club will eventually have many producers, so dropdowns don't scale. Implementation pattern:
+Whenever a list needs a "filter by producer" control, it is a **free-text search**, not a dropdown — the club will eventually have many producers, so dropdowns don't scale.
 
 - Filter state holds a string (`producer: string`), not a producer id.
 - Match is a case-insensitive substring check against `producer_name` (or the producer row's `name`).
-- The input uses `className="filter-search filter-search-sm"` so it renders narrower than the primary name/event search (see `.filter-search-sm` in `src/styles/global.css`). This is the visual standard across Events, Payments, and Producers pages — keep it consistent when adding new producer filters.
+- The input uses `className="filter-search"` (same size as every other search — see the convention above).
 - Placeholder: `חיפוש לפי מפיק` (or `חיפוש לפי שם` if the page is the producers list itself, matching on `producers.name`).
 
 Existing references: `src/features/events/EventsPage.tsx`, `src/features/payments/PaymentsPage.tsx`, `src/features/producers/ProducersPage.tsx`.
+
+### Date-range filters
+Whenever a list has a date-range filter, the two `<input type="date">` fields are preceded by tiny Hebrew labels — `מ` before "from" and `עד` before "to" — rendered as `<span className="filter-date-label">` (muted, 13px).
+
+Pages that are conceptually organized by month (events, payments) use a **month-cursor pattern** at the top of the table card — a `.calendar-header` with prev `‹` / "היום" / next `›` buttons on one side and the month name (`MONTH_FMT.format(monthCursor)` from `src/features/events/monthNav.ts`) on the other. The month cursor drives the default filter; when the user sets an explicit from/to date, the month filter stops applying and a "(סינון תאריכים פעיל)" tag appears next to the month name. `"נקה סינון"` resets filters to empty (not to current month — the cursor handles that by default). Existing references: `src/features/events/EventsPage.tsx`, `src/features/payments/PaymentsPage.tsx`.
 
 ## Working style preferences
 - Keep components small; repos flat (no ORM layer).

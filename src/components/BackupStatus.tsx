@@ -16,6 +16,7 @@ const TIME_FMT = new Intl.DateTimeFormat("he-IL", {
 const LAST_BACKUP_KEY = "ozen.backup.lastAt";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CHECK_INTERVAL_MS = 60 * 60 * 1000;
+const FLASH_MS = 3000;
 
 function readLastBackup(): Date | null {
   const raw = localStorage.getItem(LAST_BACKUP_KEY);
@@ -31,14 +32,26 @@ function writeLastBackup(d: Date): void {
 
 export function BackupStatus() {
   const isAdmin = useIsAdmin();
-  const [state, setState] = useState<State>(() => {
-    const last = readLastBackup();
-    return last ? { kind: "done", at: last } : { kind: "idle" };
-  });
+  const [state, setState] = useState<State>({ kind: "idle" });
   const runningRef = useRef(false);
+  const revertTimerRef = useRef<number | null>(null);
+
+  const scheduleRevert = useCallback(() => {
+    if (revertTimerRef.current != null) {
+      window.clearTimeout(revertTimerRef.current);
+    }
+    revertTimerRef.current = window.setTimeout(() => {
+      setState({ kind: "idle" });
+      revertTimerRef.current = null;
+    }, FLASH_MS);
+  }, []);
 
   const runNow = useCallback(async () => {
     if (runningRef.current) return;
+    if (revertTimerRef.current != null) {
+      window.clearTimeout(revertTimerRef.current);
+      revertTimerRef.current = null;
+    }
     runningRef.current = true;
     setState({ kind: "running" });
     const res = await runBackup();
@@ -47,13 +60,15 @@ export function BackupStatus() {
       const now = new Date();
       writeLastBackup(now);
       setState({ kind: "done", at: now });
+      scheduleRevert();
     } else if (res.disabled) {
       setState({ kind: "idle" });
     } else {
       setState({ kind: "error", message: res.message });
+      scheduleRevert();
     }
     return res;
-  }, []);
+  }, [scheduleRevert]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -74,6 +89,10 @@ export function BackupStatus() {
     return () => {
       cancelled = true;
       if (intervalId != null) window.clearInterval(intervalId);
+      if (revertTimerRef.current != null) {
+        window.clearTimeout(revertTimerRef.current);
+        revertTimerRef.current = null;
+      }
     };
   }, [isAdmin, runNow]);
 
