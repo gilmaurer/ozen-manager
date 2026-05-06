@@ -140,6 +140,12 @@ export function ProducersPage() {
                 </select>
               </div>
             </div>
+            <div
+              className="muted"
+              style={{ margin: "0 0 8px", fontSize: 13 }}
+            >
+              סה"כ: {visible.length} מפיקים
+            </div>
             {visible.length === 0 ? (
               <div className="empty">אין תוצאות לסינון.</div>
             ) : (

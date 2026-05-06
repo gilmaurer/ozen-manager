@@ -27,12 +27,52 @@ export function ProducerDetailPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [page, setPage] = useState(0);
+  const [sort, setSort] = useState<{
+    key: "name" | "date" | "type" | "status";
+    dir: "asc" | "desc";
+  }>({ key: "date", dir: "desc" });
 
   const PAGE_SIZE = 10;
-  const sortedEvents = useMemo(
-    () => [...events].sort((a, b) => b.date.localeCompare(a.date)),
-    [events],
-  );
+  const sortedEvents = useMemo(() => {
+    const copy = [...events];
+    copy.sort((a, b) => {
+      let av: string, bv: string;
+      switch (sort.key) {
+        case "name":
+          av = a.name;
+          bv = b.name;
+          break;
+        case "date":
+          av = a.date;
+          bv = b.date;
+          break;
+        case "type":
+          av = a.type ?? "";
+          bv = b.type ?? "";
+          break;
+        case "status":
+          av = a.status;
+          bv = b.status;
+          break;
+      }
+      const cmp = av.localeCompare(bv, "he");
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+    return copy;
+  }, [events, sort]);
+
+  function toggleSort(key: "name" | "date" | "type" | "status") {
+    setSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "desc" },
+    );
+  }
+
+  function sortArrow(key: "name" | "date" | "type" | "status"): string {
+    if (sort.key !== key) return "";
+    return sort.dir === "asc" ? " ↑" : " ↓";
+  }
 
   useEffect(() => {
     setPage(0);
@@ -127,13 +167,51 @@ export function ProducerDetailPage() {
           <div className="empty">אין אירועים משויכים למפיק זה.</div>
         ) : (
           <>
+            <div
+              className="muted"
+              style={{ margin: "0 0 8px", fontSize: 13 }}
+            >
+              סה"כ: {sortedEvents.length} אירועים
+            </div>
             <table>
               <thead>
                 <tr>
-                  <th>שם</th>
-                  <th>תאריך</th>
-                  <th>סוג</th>
-                  <th>סטטוס</th>
+                  <th>
+                    <button
+                      type="button"
+                      className="sort-header"
+                      onClick={() => toggleSort("name")}
+                    >
+                      שם{sortArrow("name")}
+                    </button>
+                  </th>
+                  <th>
+                    <button
+                      type="button"
+                      className="sort-header"
+                      onClick={() => toggleSort("date")}
+                    >
+                      תאריך{sortArrow("date")}
+                    </button>
+                  </th>
+                  <th>
+                    <button
+                      type="button"
+                      className="sort-header"
+                      onClick={() => toggleSort("type")}
+                    >
+                      סוג{sortArrow("type")}
+                    </button>
+                  </th>
+                  <th>
+                    <button
+                      type="button"
+                      className="sort-header"
+                      onClick={() => toggleSort("status")}
+                    >
+                      סטטוס{sortArrow("status")}
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody>

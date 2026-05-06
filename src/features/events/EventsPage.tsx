@@ -85,6 +85,16 @@ type SummarySortKey =
 
 type SummarySort = { key: SummarySortKey; dir: "asc" | "desc" };
 
+type EventsSortKey =
+  | "name"
+  | "date"
+  | "start_time"
+  | "type"
+  | "producer"
+  | "status";
+
+type EventsSort = { key: EventsSortKey; dir: "asc" | "desc" };
+
 function matches(
   f: Filters,
   e: EventWithProducer,
@@ -127,6 +137,10 @@ export function EventsPage() {
     startOfMonth(new Date()),
   );
   const [summarySort, setSummarySort] = useState<SummarySort>({
+    key: "date",
+    dir: "desc",
+  });
+  const [eventsSort, setEventsSort] = useState<EventsSort>({
     key: "date",
     dir: "desc",
   });
@@ -264,6 +278,55 @@ export function EventsPage() {
   function sortArrow(key: SummarySortKey): string {
     if (summarySort.key !== key) return "";
     return summarySort.dir === "asc" ? " ↑" : " ↓";
+  }
+
+  const sortedAllEvents = useMemo(() => {
+    const copy = [...filteredEvents];
+    copy.sort((a, b) => {
+      let av: string, bv: string;
+      switch (eventsSort.key) {
+        case "name":
+          av = a.name;
+          bv = b.name;
+          break;
+        case "date":
+          av = a.date;
+          bv = b.date;
+          break;
+        case "start_time":
+          av = a.start_time ?? "";
+          bv = b.start_time ?? "";
+          break;
+        case "type":
+          av = a.type ?? "";
+          bv = b.type ?? "";
+          break;
+        case "producer":
+          av = a.producer_name ?? "";
+          bv = b.producer_name ?? "";
+          break;
+        case "status":
+          av = a.status;
+          bv = b.status;
+          break;
+      }
+      const cmp = av.localeCompare(bv, "he");
+      return eventsSort.dir === "asc" ? cmp : -cmp;
+    });
+    return copy;
+  }, [filteredEvents, eventsSort]);
+
+  function toggleEventsSort(key: EventsSortKey) {
+    setEventsSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "desc" },
+    );
+  }
+
+  function eventsArrow(key: EventsSortKey): string {
+    if (eventsSort.key !== key) return "";
+    return eventsSort.dir === "asc" ? " ↑" : " ↓";
   }
 
   async function resolveProducerId(name: string | null): Promise<number | null> {
@@ -536,6 +599,15 @@ export function EventsPage() {
               )}
             </div>
 
+            {view === "list" && !showNoMatches && (
+              <div
+                className="muted"
+                style={{ margin: "0 0 8px", fontSize: 13 }}
+              >
+                סה"כ: {filteredEvents.length}{" "}
+                {scope === "summaries" ? "סיכומים" : "אירועים"}
+              </div>
+            )}
             {view === "calendar" ? (
               <EventsCalendar
                 events={filteredEvents}
@@ -783,18 +855,66 @@ export function EventsPage() {
               <table className="centered">
                 <thead>
                   <tr>
-                    <th>שם</th>
-                    <th>תאריך</th>
-                    <th>שעה</th>
-                    <th>סוג</th>
-                    <th>מפיק</th>
-                    <th>סטטוס</th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleEventsSort("name")}
+                      >
+                        שם{eventsArrow("name")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleEventsSort("date")}
+                      >
+                        תאריך{eventsArrow("date")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleEventsSort("start_time")}
+                      >
+                        שעה{eventsArrow("start_time")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleEventsSort("type")}
+                      >
+                        סוג{eventsArrow("type")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleEventsSort("producer")}
+                      >
+                        מפיק{eventsArrow("producer")}
+                      </button>
+                    </th>
+                    <th>
+                      <button
+                        type="button"
+                        className="sort-header"
+                        onClick={() => toggleEventsSort("status")}
+                      >
+                        סטטוס{eventsArrow("status")}
+                      </button>
+                    </th>
                     <th>הערות</th>
                     <th></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredEvents.map((e) => (
+                  {sortedAllEvents.map((e) => (
                     <tr key={e.id}>
                       <td>
                         <Link

@@ -125,6 +125,19 @@ function parseDisplayDate(input: string): ParsedDate {
 const CHECK_DATE_HELP =
   "אפשר להזין בכל אחד מהפורמטים:\n• dd/mm/yyyy\n• dd.mm.yyyy\n• ddmmyyyy (8 ספרות)\nבלחיצה על Enter הערך יומר ל-dd.mm.yyyy.";
 
+type PaymentsSortKey =
+  | "name"
+  | "date"
+  | "type"
+  | "producer"
+  | "status"
+  | "net"
+  | "netExVat"
+  | "check_date"
+  | "check_number";
+
+type PaymentsSort = { key: PaymentsSortKey; dir: "asc" | "desc" };
+
 interface ProducerTotals {
   net: number;
   netExVat: number;
@@ -141,6 +154,10 @@ export function PaymentsPage() {
   const [monthCursor, setMonthCursor] = useState<Date>(() =>
     startOfMonth(new Date()),
   );
+  const [sort, setSort] = useState<PaymentsSort>({
+    key: "date",
+    dir: "desc",
+  });
   const { types, typeByCode, statusByCode } = useEnums();
   const { ask, notify } = useDialog();
 
@@ -181,9 +198,69 @@ export function PaymentsPage() {
         const b = Number.isFinite(totals.netExVat) && totals.netExVat !== 0;
         return a && b;
       })
-      .sort((a, b) => b.event.date.localeCompare(a.event.date));
+      .sort((a, b) => {
+        const e1 = a.event;
+        const e2 = b.event;
+        let av: string | number;
+        let bv: string | number;
+        switch (sort.key) {
+          case "name":
+            av = e1.name;
+            bv = e2.name;
+            break;
+          case "date":
+            av = e1.date;
+            bv = e2.date;
+            break;
+          case "type":
+            av = e1.type ?? "";
+            bv = e2.type ?? "";
+            break;
+          case "producer":
+            av = e1.producer_name ?? "";
+            bv = e2.producer_name ?? "";
+            break;
+          case "status":
+            av = e1.status;
+            bv = e2.status;
+            break;
+          case "net":
+            av = a.totals.net;
+            bv = b.totals.net;
+            break;
+          case "netExVat":
+            av = a.totals.netExVat;
+            bv = b.totals.netExVat;
+            break;
+          case "check_date":
+            av = e1.check_date ?? "";
+            bv = e2.check_date ?? "";
+            break;
+          case "check_number":
+            av = e1.check_number ?? "";
+            bv = e2.check_number ?? "";
+            break;
+        }
+        let cmp = 0;
+        if (typeof av === "number" && typeof bv === "number") cmp = av - bv;
+        else cmp = String(av).localeCompare(String(bv), "he");
+        return sort.dir === "asc" ? cmp : -cmp;
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [events, filters, tab, aggs, monthCursor, allTimes]);
+  }, [events, filters, tab, aggs, monthCursor, allTimes, sort]);
+
+  function toggleSort(key: PaymentsSortKey) {
+    setSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "desc" },
+    );
+  }
+
+  function sortArrow(key: PaymentsSortKey): string {
+    if (sort.key !== key) return "";
+    return sort.dir === "asc" ? " ↑" : " ↓";
+  }
 
   function totalsFor(e: EventWithProducer): ProducerTotals {
     const a = aggs.get(e.id);
@@ -451,22 +528,99 @@ export function PaymentsPage() {
         ) : !tabHasEvents ? (
           <div className="empty">אין אירועים בסטטוס זה.</div>
         ) : rows.length === 0 ? (
-          <div className="empty">אין תוצאות לסינון.</div>
+          <>
+            <div
+              className="muted"
+              style={{ margin: "0 0 8px", fontSize: 13 }}
+            >
+              סה"כ: 0 תשלומים
+            </div>
+            <div className="empty">אין תוצאות לסינון.</div>
+          </>
         ) : (
+          <>
+            <div
+              className="muted"
+              style={{ margin: "0 0 8px", fontSize: 13 }}
+            >
+              סה"כ: {rows.length} תשלומים
+            </div>
           <table className="centered">
             <thead>
               <tr>
-                <th>שם</th>
-                <th>תאריך</th>
-                <th>סוג</th>
-                <th>מפיק</th>
-                <th>סטטוס</th>
-                <th>סה"כ כולל מע"מ</th>
-                <th>סה"כ ללא מע"מ</th>
+                <th>
+                  <button
+                    type="button"
+                    className="sort-header"
+                    onClick={() => toggleSort("name")}
+                  >
+                    שם{sortArrow("name")}
+                  </button>
+                </th>
+                <th>
+                  <button
+                    type="button"
+                    className="sort-header"
+                    onClick={() => toggleSort("date")}
+                  >
+                    תאריך{sortArrow("date")}
+                  </button>
+                </th>
+                <th>
+                  <button
+                    type="button"
+                    className="sort-header"
+                    onClick={() => toggleSort("type")}
+                  >
+                    סוג{sortArrow("type")}
+                  </button>
+                </th>
+                <th>
+                  <button
+                    type="button"
+                    className="sort-header"
+                    onClick={() => toggleSort("producer")}
+                  >
+                    מפיק{sortArrow("producer")}
+                  </button>
+                </th>
+                <th>
+                  <button
+                    type="button"
+                    className="sort-header"
+                    onClick={() => toggleSort("status")}
+                  >
+                    סטטוס{sortArrow("status")}
+                  </button>
+                </th>
+                <th>
+                  <button
+                    type="button"
+                    className="sort-header"
+                    onClick={() => toggleSort("net")}
+                  >
+                    סה"כ כולל מע"מ{sortArrow("net")}
+                  </button>
+                </th>
+                <th>
+                  <button
+                    type="button"
+                    className="sort-header"
+                    onClick={() => toggleSort("netExVat")}
+                  >
+                    סה"כ ללא מע"מ{sortArrow("netExVat")}
+                  </button>
+                </th>
                 <th>חשבונית</th>
                 {showCheckColumns && (
                   <th>
-                    תאריך צ'ק
+                    <button
+                      type="button"
+                      className="sort-header"
+                      onClick={() => toggleSort("check_date")}
+                    >
+                      תאריך צ'ק{sortArrow("check_date")}
+                    </button>
                     <span
                       title={CHECK_DATE_HELP}
                       style={{
@@ -489,7 +643,17 @@ export function PaymentsPage() {
                     </span>
                   </th>
                 )}
-                {showCheckColumns && <th>מספר צ'ק</th>}
+                {showCheckColumns && (
+                  <th>
+                    <button
+                      type="button"
+                      className="sort-header"
+                      onClick={() => toggleSort("check_number")}
+                    >
+                      מספר צ'ק{sortArrow("check_number")}
+                    </button>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -609,6 +773,7 @@ export function PaymentsPage() {
               })}
             </tbody>
           </table>
+          </>
         )}
       </div>
     </>
