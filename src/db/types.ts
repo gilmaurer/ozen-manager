@@ -1,6 +1,7 @@
 export type EventStatus = string;
 export type EventType = string;
 export type DealType = "split" | "fit_price";
+export type PaymentMethod = "check" | "transfer" | "cash" | "other";
 
 export interface EventRow {
   id: number;
@@ -19,6 +20,8 @@ export interface EventRow {
   invoice_url: string | null;
   check_number: string | null;
   check_date: string | null;
+  payment_method: PaymentMethod | null;
+  payment_proof_url: string | null;
   notes: string | null;
   created_at: string;
 }

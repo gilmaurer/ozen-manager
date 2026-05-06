@@ -3,6 +3,7 @@ import type {
   EventStatus,
   EventType,
   EventWithProducer,
+  PaymentMethod,
 } from "../../db/types";
 import { supabase } from "../../db/supabase";
 import { withRetry } from "../../services/network";
@@ -144,6 +145,32 @@ export async function updateEventCheckDate(
     const { error } = await supabase
       .from("events")
       .update({ check_date })
+      .eq("id", id);
+    if (error) throw error;
+  });
+}
+
+export async function updateEventPaymentMethod(
+  id: number,
+  payment_method: PaymentMethod | null,
+): Promise<void> {
+  return withRetry(async () => {
+    const { error } = await supabase
+      .from("events")
+      .update({ payment_method })
+      .eq("id", id);
+    if (error) throw error;
+  });
+}
+
+export async function updateEventPaymentProofUrl(
+  id: number,
+  payment_proof_url: string | null,
+): Promise<void> {
+  return withRetry(async () => {
+    const { error } = await supabase
+      .from("events")
+      .update({ payment_proof_url })
       .eq("id", id);
     if (error) throw error;
   });

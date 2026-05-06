@@ -562,7 +562,11 @@ export function EventSummaryPage() {
       ? `${100 - event.deal}%`
       : dealLabelText;
   const clubTicketIncome = clubTicketShare + ozenCommissionTotal;
-  const clubTotalRevenue = clubTicketIncome + barIncome;
+  const stereoRecordN = Number(stereoRecord) || 0;
+  const channelsRecordN = Number(channelsRecord) || 0;
+  const lightmanN = Number(lightman) || 0;
+  const clubOthersIncome = stereoRecordN + channelsRecordN + lightmanN;
+  const clubTotalRevenue = clubTicketIncome + barIncome + clubOthersIncome;
   const expenses = staffTotal + clubCampaignExpense + barExp;
   const clubNet = clubTotalRevenue - expenses;
 
@@ -574,9 +578,6 @@ export function EventSummaryPage() {
   const producerCampaignExpense =
     campaignAmountN * (producerCampaignPct / 100);
   const acumN = Number(acum) || 0;
-  const stereoRecordN = Number(stereoRecord) || 0;
-  const channelsRecordN = Number(channelsRecord) || 0;
-  const lightmanN = Number(lightman) || 0;
   const additionalExpensesTotal =
     acumN + stereoRecordN + channelsRecordN + lightmanN;
   const producerExpenses = producerCampaignExpense + additionalExpensesTotal;
@@ -1002,6 +1003,12 @@ export function EventSummaryPage() {
               הכנסות בר ברוטו:{" "}
               <span dir="ltr">{formatMoney(barIncome)}</span>
             </div>
+            {clubOthersIncome > 0 && (
+              <div>
+                החזר הוצאות (סטריאו / ערוצים / תאורן):{" "}
+                <span dir="ltr">{formatMoney(clubOthersIncome)}</span>
+              </div>
+            )}
             <div
               style={{
                 fontWeight: 600,

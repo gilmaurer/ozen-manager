@@ -3,13 +3,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { withFreshProviderToken } from "./googleReauth";
 
 // Opens the native file picker. On selection, uploads the file to the shared
-// invoice folder on Google Drive using the signed-in user's OAuth access
-// token (drive.file scope). Returns the Drive webViewLink, or null if the
-// user cancelled the picker. Throws on any error.
-//
-// If the Drive call fails with 401 (expired Google token), transparently
-// refreshes via silent re-auth and retries once.
-export async function pickAndUploadInvoice(
+// Drive folder using the signed-in user's OAuth access token (drive.file
+// scope). Returns the Drive webViewLink, or null if the user cancelled.
+// Throws on any error. Silently refreshes an expired Google token and
+// retries once.
+async function pickAndUploadToDrive(
+  filenamePrefix: string,
   eventName: string,
   eventDate: string,
 ): Promise<string | null> {
@@ -18,7 +17,7 @@ export async function pickAndUploadInvoice(
     directory: false,
     filters: [
       {
-        name: "חשבוניות",
+        name: "קבצים",
         extensions: [
           "pdf",
           "png",
@@ -40,7 +39,7 @@ export async function pickAndUploadInvoice(
   const filePath = selected as string;
   const ext = (filePath.split(".").pop() ?? "bin").toLowerCase();
   const safe = (eventName || "event").replace(/[\\/:*?"<>|]/g, "_");
-  const displayName = `חשבונית_${safe}_${eventDate}.${ext}`;
+  const displayName = `${filenamePrefix}_${safe}_${eventDate}.${ext}`;
 
   return withFreshProviderToken(async (token) => {
     const url: string = await invoke("upload_invoice_to_drive", {
@@ -50,4 +49,18 @@ export async function pickAndUploadInvoice(
     });
     return url;
   });
+}
+
+export function pickAndUploadInvoice(
+  eventName: string,
+  eventDate: string,
+): Promise<string | null> {
+  return pickAndUploadToDrive("חשבונית", eventName, eventDate);
+}
+
+export function pickAndUploadPaymentProof(
+  eventName: string,
+  eventDate: string,
+): Promise<string | null> {
+  return pickAndUploadToDrive("אישור_תשלום", eventName, eventDate);
 }
