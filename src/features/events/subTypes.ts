@@ -15,8 +15,8 @@ export const SUB_TYPES_BY_TYPE: Record<string, SubTypeOption[]> = {
     { code: "three_zones", label: "שלוש רחבות" },
   ],
   concert: [
-    { code: "small", label: "קטנה" },
-    { code: "big", label: "גדולה" },
+    { code: "small", label: "ישיבה" },
+    { code: "big", label: "עמידה" },
   ],
 };
 
