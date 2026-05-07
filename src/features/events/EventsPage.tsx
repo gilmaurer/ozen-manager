@@ -23,7 +23,14 @@ import { Modal } from "../../components/Modal";
 import { EventForm, EventFormValues } from "./EventForm";
 import { EventsCalendar } from "./EventsCalendar";
 import { InlineStatusSelect } from "./InlineStatusSelect";
-import { MONTH_FMT, monthBounds, startOfMonth } from "./monthNav";
+import {
+  MONTH_FMT,
+  fromMonthKey,
+  monthBounds,
+  monthKeyOf,
+  monthsAroundToday,
+  startOfMonth,
+} from "./monthNav";
 import { clubTicketShareOf, dealLabel } from "./dealCalc";
 import { useEnums } from "../../services/enums";
 import {
@@ -551,6 +558,31 @@ export function EventsPage() {
                 value={filters.producer}
                 onChange={(e) => updateFilter("producer", e.target.value)}
               />
+              <select
+                value={monthKeyOf(monthCursor)}
+                onChange={(e) => {
+                  const d = fromMonthKey(e.target.value);
+                  if (!d) return;
+                  setAllTimes(false);
+                  updateFilter("from", "");
+                  updateFilter("to", "");
+                  setMonthCursor(d);
+                }}
+                aria-label="בחר חודש"
+              >
+                {!monthsAroundToday().some(
+                  (d) => monthKeyOf(d) === monthKeyOf(monthCursor),
+                ) && (
+                  <option value={monthKeyOf(monthCursor)}>
+                    {MONTH_FMT.format(monthCursor)}
+                  </option>
+                )}
+                {monthsAroundToday().map((d) => (
+                  <option key={monthKeyOf(d)} value={monthKeyOf(d)}>
+                    {MONTH_FMT.format(d)}
+                  </option>
+                ))}
+              </select>
               <span className="filter-date-label">מ</span>
               <input
                 className="filter-date"
