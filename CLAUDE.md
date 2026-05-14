@@ -54,6 +54,22 @@ Schema was loaded once via the Supabase SQL editor (see `/Users/gil.maurer/.clau
 
 Adding a column or table: run the `ALTER TABLE` / `CREATE TABLE` directly in the Supabase SQL editor. Update `src/db/types.ts` to match. No client-side migration files anymore.
 
+**For any new table in `public`**, the `CREATE TABLE` block must also include explicit grants, RLS, and policies — otherwise the table is invisible to `supabase-js`. As of Oct 30, 2026 Supabase no longer auto-grants `public` tables to the Data API roles; if a grant is missing, PostgREST returns error `42501` with the exact GRANT to apply. (Existing tables keep their grants — this only matters when adding new ones.) Pattern:
+
+```sql
+-- Grants per role
+grant select                          on public.your_table to anon;
+grant select, insert, update, delete  on public.your_table to authenticated;
+grant select, insert, update, delete  on public.your_table to service_role;
+
+-- Enable RLS
+alter table public.your_table enable row level security;
+
+-- Policies — delegate to the existing allowlist function
+create policy "allowed users can read"  on public.your_table for select to authenticated using (public.is_allowed_user());
+create policy "allowed users can write" on public.your_table for all    to authenticated using (public.is_allowed_user()) with check (public.is_allowed_user());
+```
+
 ## Auth flow
 - First launch: `AuthGate` (`src/features/auth/AuthGate.tsx`) shows `LoginPage` — one "התחבר עם Google" button.
 - Click → Rust opens a localhost loopback listener (`start_auth_listener` in `src-tauri/src/auth_loopback.rs`), frontend asks Supabase for an OAuth URL with `redirectTo: http://localhost:<port>/auth/callback`, `skipBrowserRedirect: true`, and `access_type=offline` + `prompt=consent`. System browser opens; Google returns to the loopback; the captured code is exchanged via `supabase.auth.exchangeCodeForSession`.
