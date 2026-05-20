@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import type {
   EventSummaryRow,
   EventWithProducer,
+  SummaryExtraExpenseRow,
   SummaryTicketRow,
 } from "../../db/types";
 import { supabase } from "../../db/supabase";
@@ -23,6 +24,7 @@ interface Props {
   event: EventWithProducer;
   summary: EventSummaryRow;
   tickets: SummaryTicketRow[];
+  extraExpenses: SummaryExtraExpenseRow[];
   producerEmail: string;
   sender: CurrentSender;
   onClose: () => void;
@@ -47,13 +49,14 @@ export function SendInvoiceModal({
   event,
   summary,
   tickets,
+  extraExpenses,
   producerEmail,
   sender,
   onClose,
   onSent,
 }: Props) {
   const placeholders = useMemo(() => {
-    const calc = computeInvoice(event, summary, tickets);
+    const calc = computeInvoice(event, summary, tickets, extraExpenses);
     return {
       producer_name: event.producer_name ?? "",
       event_name: event.name ?? "",
@@ -62,7 +65,7 @@ export function SendInvoiceModal({
       amount_ex_vat: fmtMoney(calc.producerNetExVat),
       sender_name: sender.email,
     };
-  }, [event, summary, tickets, sender.email]);
+  }, [event, summary, tickets, extraExpenses, sender.email]);
 
   const [subject, setSubject] = useState(() =>
     fillPlaceholders(DEFAULT_SUBJECT, placeholders),
@@ -97,6 +100,7 @@ export function SendInvoiceModal({
         event,
         summary,
         tickets,
+        extraExpenses,
       );
       const safeName = (event.name ?? "event").replace(/[\\/:*?"<>|]/g, "_");
       const pdfFilename = `סיכום_אירוע_${safeName}_${event.date}.pdf`;

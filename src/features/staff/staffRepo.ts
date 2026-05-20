@@ -16,10 +16,9 @@ export async function listStaff(): Promise<StaffRow[]> {
 
 export interface StaffInput {
   full_name: string;
-  role: string | null;
   phone: string | null;
-  hourly_rate: number | null;
   active: boolean;
+  job_title_ids: number[];
 }
 
 export async function createStaff(input: StaffInput): Promise<number> {

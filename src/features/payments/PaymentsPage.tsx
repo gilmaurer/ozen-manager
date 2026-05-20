@@ -313,11 +313,7 @@ export function PaymentsPage() {
     const campaignAmount = e.campaign_amount ?? 0;
     const campaignPct = e.campaign ?? 0;
     const producerCampaign = campaignAmount * ((100 - campaignPct) / 100);
-    const extras =
-      (a?.acum ?? 0) +
-      (a?.stereo_record ?? 0) +
-      (a?.channels_record ?? 0) +
-      (a?.lightman ?? 0);
+    const extras = a?.additional_expenses ?? 0;
     const net = producerTicketShare - producerCampaign - extras;
     return { net, netExVat: net / (1 + VAT_RATE) };
   }

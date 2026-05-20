@@ -14,6 +14,7 @@ import { EventDetailPage } from "./features/events/EventDetailPage";
 import { ProducersPage } from "./features/producers/ProducersPage";
 import { ProducerDetailPage } from "./features/producers/ProducerDetailPage";
 import { SettingsPage } from "./features/settings/SettingsPage";
+import { StaffPage } from "./features/staff/StaffPage";
 import { EventSummaryPage } from "./features/summaries/EventSummaryPage";
 import { PaymentsPage } from "./features/payments/PaymentsPage";
 import { UpdaterProvider } from "./features/updates/UpdaterProvider";
@@ -180,6 +181,11 @@ function Sidebar() {
         מפיקים
       </NavLink>
       {isAdmin && (
+        <NavLink to="/staff" className="nav-link">
+          צוות
+        </NavLink>
+      )}
+      {isAdmin && (
         <NavLink to="/settings" className="nav-link">
           הגדרות
         </NavLink>
@@ -205,6 +211,18 @@ function AdminGuardedSettings() {
   return <SettingsPage />;
 }
 
+function AdminGuardedStaff() {
+  const isAdmin = useIsAdmin();
+  if (!isAdmin) {
+    return (
+      <div className="card">
+        <div className="empty">אין גישה לעמוד הזה.</div>
+      </div>
+    );
+  }
+  return <StaffPage />;
+}
+
 export default function App() {
   return (
     <AuthGate>
@@ -225,6 +243,7 @@ export default function App() {
                     <Route path="/payments" element={<PaymentsPage />} />
                     <Route path="/producers" element={<ProducersPage />} />
                     <Route path="/producers/:id" element={<ProducerDetailPage />} />
+                    <Route path="/staff" element={<AdminGuardedStaff />} />
                     <Route path="/settings" element={<AdminGuardedSettings />} />
                   </Routes>
                 </main>

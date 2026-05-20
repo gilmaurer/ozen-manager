@@ -65,6 +65,14 @@ export interface SummaryTicketRow {
   commission: number;
 }
 
+export interface SummaryExtraExpenseRow {
+  id: number;
+  summary_id: number;
+  name: string;
+  amount: number;
+  created_at: string;
+}
+
 export interface ProducerRow {
   id: number;
   name: string;
@@ -80,7 +88,32 @@ export interface StaffRow {
   phone: string | null;
   hourly_rate: number | null;
   active: boolean;
+  job_title_ids: number[];
   created_at: string;
+}
+
+export interface JobTitleRow {
+  id: number;
+  name: string;
+  default_rate: number | null;
+  created_at: string;
+}
+
+export interface EventWorkerRow {
+  id: number;
+  event_id: number;
+  staff_id: number;
+  job_title_id: number;
+  rate: number;
+  hours: number | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface EventWorkerWithDetails extends EventWorkerRow {
+  staff_name: string;
+  job_title_name: string;
+  staff_job_title_ids: number[];
 }
 
 export interface ShiftRow {

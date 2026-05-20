@@ -1,4 +1,8 @@
-import type { EventSummaryRow, SummaryTicketRow } from "../../db/types";
+import type {
+  EventSummaryRow,
+  SummaryExtraExpenseRow,
+  SummaryTicketRow,
+} from "../../db/types";
 import { supabase } from "../../db/supabase";
 import { withRetry } from "../../services/network";
 
@@ -142,6 +146,63 @@ export async function deleteTicket(id: number): Promise<void> {
   });
 }
 
+export async function listExtraExpenses(
+  summaryId: number,
+): Promise<SummaryExtraExpenseRow[]> {
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from("summary_extra_expenses")
+      .select("*")
+      .eq("summary_id", summaryId)
+      .order("id", { ascending: true });
+    if (error) throw error;
+    return (data ?? []) as SummaryExtraExpenseRow[];
+  });
+}
+
+export interface ExtraExpenseInput {
+  summary_id: number;
+  name: string;
+  amount: number;
+}
+
+export async function insertExtraExpense(
+  input: ExtraExpenseInput,
+): Promise<number> {
+  return withRetry(async () => {
+    const { data, error } = await supabase
+      .from("summary_extra_expenses")
+      .insert(input)
+      .select("id")
+      .single();
+    if (error) throw error;
+    return (data as { id: number }).id;
+  });
+}
+
+export async function updateExtraExpense(
+  id: number,
+  patch: { name?: string; amount?: number },
+): Promise<void> {
+  return withRetry(async () => {
+    const { error } = await supabase
+      .from("summary_extra_expenses")
+      .update(patch)
+      .eq("id", id);
+    if (error) throw error;
+  });
+}
+
+export async function deleteExtraExpense(id: number): Promise<void> {
+  return withRetry(async () => {
+    const { error } = await supabase
+      .from("summary_extra_expenses")
+      .delete()
+      .eq("id", id);
+    if (error) throw error;
+  });
+}
+
 export interface SummaryAggregate {
   event_id: number;
   tickets_count: number;
@@ -156,19 +217,40 @@ export interface SummaryAggregate {
   stereo_record: number;
   channels_record: number;
   lightman: number;
+  extra_expenses_total: number;
+  additional_expenses: number;
 }
 
 export async function listSummaryAggregates(): Promise<
   Map<number, SummaryAggregate>
 > {
-  const [sumsRes, ticketsRes] = await Promise.all([
+  const [sumsRes, ticketsRes, extrasRes] = await Promise.all([
     supabase.from("event_summaries").select("*"),
     supabase.from("summary_tickets").select("*"),
+    supabase
+      .from("summary_extra_expenses")
+      .select("summary_id, amount")
+      .then(
+        (r) => r,
+        // Tolerate the table not existing yet (pre-migration). Treat as empty.
+        () => ({ data: [], error: null }),
+      ),
   ]);
   if (sumsRes.error) throw sumsRes.error;
   if (ticketsRes.error) throw ticketsRes.error;
   const summaries = (sumsRes.data ?? []) as EventSummaryRow[];
   const tickets = (ticketsRes.data ?? []) as SummaryTicketRow[];
+  const extras = (extrasRes.error ? [] : (extrasRes.data ?? [])) as Array<{
+    summary_id: number;
+    amount: number;
+  }>;
+  const extrasBySummary = new Map<number, number>();
+  for (const e of extras) {
+    extrasBySummary.set(
+      e.summary_id,
+      (extrasBySummary.get(e.summary_id) ?? 0) + (e.amount ?? 0),
+    );
+  }
 
   interface TicketAgg {
     count: number;
@@ -209,6 +291,11 @@ export async function listSummaryAggregates(): Promise<
   const byEventId = new Map<number, SummaryAggregate>();
   for (const s of summaries) {
     const agg = ticketsBySummary.get(s.id) ?? empty();
+    const acum = s.acum ?? 0;
+    const stereo = s.stereo_record ?? 0;
+    const channels = s.channels_record ?? 0;
+    const lightman = s.lightman ?? 0;
+    const extra = extrasBySummary.get(s.id) ?? 0;
     byEventId.set(s.event_id, {
       event_id: s.event_id,
       tickets_count: agg.count,
@@ -220,10 +307,12 @@ export async function listSummaryAggregates(): Promise<
       bar_total:
         (s.bar_cash ?? 0) + (s.bar_credit ?? 0) - (s.bar_expenses ?? 0),
       counter: s.counter,
-      acum: s.acum ?? 0,
-      stereo_record: s.stereo_record ?? 0,
-      channels_record: s.channels_record ?? 0,
-      lightman: s.lightman ?? 0,
+      acum,
+      stereo_record: stereo,
+      channels_record: channels,
+      lightman,
+      extra_expenses_total: extra,
+      additional_expenses: acum + stereo + channels + lightman + extra,
     });
   }
   return byEventId;

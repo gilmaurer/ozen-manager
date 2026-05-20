@@ -2,8 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import type {
   EventSummaryRow,
-  EventTypeStaffRow,
   EventWithProducer,
+  EventWorkerWithDetails,
+  JobTitleRow,
+  StaffRow,
+  SummaryExtraExpenseRow,
   SummaryTicketRow,
 } from "../../db/types";
 import { getEvent } from "../events/eventsRepo";
@@ -14,16 +17,23 @@ import { formatDate } from "../../utils/format";
 import {
   OZEN_SOURCE,
   VAT_RATE,
+  deleteExtraExpense,
   deleteSummary,
   deleteTicket,
   ensureSummaryForEvent,
+  insertExtraExpense,
   insertTicket,
+  listExtraExpenses,
   listTickets,
   ozenCommission,
+  updateExtraExpense,
   updateSummary,
   updateTicket,
 } from "./summariesRepo";
-import { listEventTypeStaff } from "./settingsRepo";
+import { listEventWorkers, workerCost } from "./eventWorkersRepo";
+import { EventWorkersCard } from "./EventWorkersCard";
+import { listStaff } from "../staff/staffRepo";
+import { listJobTitles } from "../staff/jobTitlesRepo";
 import { CsvUploadModal } from "./CsvUploadModal";
 import { downloadProducerInvoice } from "./producerInvoice";
 import { SendInvoiceModal } from "./SendInvoiceModal";
@@ -180,6 +190,67 @@ function TicketRow({
         </button>
       </td>
     </tr>
+  );
+}
+
+interface ExtraExpenseRowProps {
+  row: SummaryExtraExpenseRow;
+  onSave: (
+    id: number,
+    patch: { name?: string; amount?: number },
+  ) => Promise<void>;
+  onDelete: (id: number) => Promise<void>;
+}
+
+function ExtraExpenseRowEditor({ row, onSave, onDelete }: ExtraExpenseRowProps) {
+  const [name, setName] = useState(row.name);
+  const [amount, setAmount] = useState(String(row.amount));
+
+  async function saveName() {
+    const trimmed = name;
+    if (trimmed === row.name) return;
+    await onSave(row.id, { name: trimmed });
+  }
+  async function saveAmount() {
+    const n = Number(amount);
+    if (!Number.isFinite(n) || n === row.amount) return;
+    await onSave(row.id, { amount: n });
+  }
+
+  return (
+    <div
+      className="form-row"
+      style={{ alignItems: "flex-end", marginBottom: 8 }}
+    >
+      <div>
+        <label>שם ההוצאה</label>
+        <input
+          dir="auto"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={saveName}
+        />
+      </div>
+      <div>
+        <label>סכום (₪)</label>
+        <input
+          type="number"
+          dir="ltr"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          onBlur={saveAmount}
+        />
+      </div>
+      <div>
+        <button
+          type="button"
+          className="btn btn-danger btn-sm"
+          onClick={() => onDelete(row.id)}
+        >
+          הסר
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -346,7 +417,12 @@ export function EventSummaryPage() {
   const [event, setEvent] = useState<EventWithProducer | null>(null);
   const [summary, setSummary] = useState<EventSummaryRow | null>(null);
   const [tickets, setTickets] = useState<SummaryTicketRow[]>([]);
-  const [staff, setStaff] = useState<EventTypeStaffRow[]>([]);
+  const [extraExpenses, setExtraExpenses] = useState<SummaryExtraExpenseRow[]>(
+    [],
+  );
+  const [workers, setWorkers] = useState<EventWorkerWithDetails[]>([]);
+  const [staffList, setStaffList] = useState<StaffRow[]>([]);
+  const [jobTitles, setJobTitles] = useState<JobTitleRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [csvOpen, setCsvOpen] = useState(false);
   const [addBoxOpen, setAddBoxOpen] = useState(false);
@@ -377,15 +453,21 @@ export function EventSummaryPage() {
       return;
     }
     const sum = await ensureSummaryForEvent(eventId);
-    const [ts, stf, prod] = await Promise.all([
+    const [ts, ee, ws, sl, jt, prod] = await Promise.all([
       listTickets(sum.id),
-      ev.type ? listEventTypeStaff(ev.type, ev.sub_type) : Promise.resolve([]),
+      listExtraExpenses(sum.id),
+      listEventWorkers(eventId),
+      listStaff(),
+      listJobTitles(),
       ev.producer_id ? getProducer(ev.producer_id) : Promise.resolve(null),
     ]);
     setEvent(ev);
     setSummary(sum);
     setTickets(ts);
-    setStaff(stf);
+    setExtraExpenses(ee);
+    setWorkers(ws);
+    setStaffList(sl);
+    setJobTitles(jt);
     setProducerEmail(prod?.email ?? null);
     setBarIncomeInput(String((sum.bar_cash ?? 0) + (sum.bar_credit ?? 0)));
     setAcum(String(sum.acum ?? 0));
@@ -403,6 +485,38 @@ export function EventSummaryPage() {
   async function reloadTickets() {
     if (!summary) return;
     setTickets(await listTickets(summary.id));
+  }
+
+  async function reloadWorkers() {
+    setWorkers(await listEventWorkers(eventId));
+  }
+
+  async function reloadExtraExpenses() {
+    if (!summary) return;
+    setExtraExpenses(await listExtraExpenses(summary.id));
+  }
+
+  async function handleAddExtraExpense() {
+    if (!summary) return;
+    await insertExtraExpense({
+      summary_id: summary.id,
+      name: "",
+      amount: 0,
+    });
+    await reloadExtraExpenses();
+  }
+
+  async function handleUpdateExtraExpense(
+    id: number,
+    patch: { name?: string; amount?: number },
+  ) {
+    await updateExtraExpense(id, patch);
+    await reloadExtraExpenses();
+  }
+
+  async function handleDeleteExtraExpense(id: number) {
+    await deleteExtraExpense(id);
+    await reloadExtraExpenses();
   }
 
   async function saveBarIncome() {
@@ -547,7 +661,10 @@ export function EventSummaryPage() {
     counterN && counterN > 0 && Number.isFinite(counterN)
       ? barTotal / counterN
       : null;
-  const staffTotal = staff.reduce((s, r) => s + r.cost, 0);
+  const staffTotal = workers.reduce(
+    (s, w) => s + workerCost(w.rate, w.hours),
+    0,
+  );
   const campaignPct = event?.campaign ?? 0;
   const campaignAmountN = event?.campaign_amount ?? 0;
   const clubCampaignExpense = campaignAmountN * (campaignPct / 100);
@@ -578,8 +695,12 @@ export function EventSummaryPage() {
   const producerCampaignExpense =
     campaignAmountN * (producerCampaignPct / 100);
   const acumN = Number(acum) || 0;
+  const extraExpensesTotal = extraExpenses.reduce(
+    (s, e) => s + (Number(e.amount) || 0),
+    0,
+  );
   const additionalExpensesTotal =
-    acumN + stereoRecordN + channelsRecordN + lightmanN;
+    acumN + stereoRecordN + channelsRecordN + lightmanN + extraExpensesTotal;
   const producerExpenses = producerCampaignExpense + additionalExpensesTotal;
   const producerNet = producerTicketShare - producerExpenses;
   const producerNetExVat = producerNet / (1 + VAT_RATE);
@@ -855,6 +976,30 @@ export function EventSummaryPage() {
             />
           </div>
         </div>
+
+        {extraExpenses.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            {extraExpenses.map((e) => (
+              <ExtraExpenseRowEditor
+                key={e.id}
+                row={e}
+                onSave={handleUpdateExtraExpense}
+                onDelete={handleDeleteExtraExpense}
+              />
+            ))}
+          </div>
+        )}
+
+        <div style={{ marginTop: 8 }}>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={handleAddExtraExpense}
+          >
+            + הוסף הוצאה
+          </button>
+        </div>
+
         <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>
           סה"כ:{" "}
           <span dir="ltr">{formatMoney(additionalExpensesTotal)}</span>
@@ -895,58 +1040,15 @@ export function EventSummaryPage() {
         )}
       </div>
 
-      {/* Staff */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <h2>צוות</h2>
-        {staff.length === 0 ? (
-          <div className="empty">
-            לא הוגדר צוות לסוג האירוע הזה.
-            {event.type && (
-              <>
-                {" "}
-                <Link to="/settings">הגדרה בהגדרות</Link>
-              </>
-            )}
-          </div>
-        ) : (
-          <>
-            <table>
-              <thead>
-                <tr>
-                  <th>תפקיד</th>
-                  <th>כמות</th>
-                  <th>עלות</th>
-                </tr>
-              </thead>
-              <tbody>
-                {staff.map((s) => (
-                  <tr key={s.id}>
-                    <td className="row-value" dir="auto">
-                      {s.role}
-                    </td>
-                    <td dir="ltr" style={{ textAlign: "start" }}>
-                      {s.quantity}
-                    </td>
-                    <td dir="ltr" style={{ textAlign: "start" }}>
-                      {formatMoney(s.cost)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div
-              className="muted"
-              style={{ fontSize: 13, marginTop: 8 }}
-              dir="ltr"
-            >
-              סה"כ צוות: {formatMoney(staffTotal)}
-            </div>
-          </>
-        )}
-        <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-          <Link to="/settings">עריכה בהגדרות</Link>
-        </div>
-      </div>
+      {/* Staff (per-event workers) */}
+      <EventWorkersCard
+        eventId={eventId}
+        workers={workers}
+        staffList={staffList}
+        jobTitles={jobTitles}
+        staffTotal={staffTotal}
+        onChanged={reloadWorkers}
+      />
 
       {/* Summary strip */}
       <div className="card" style={{ marginBottom: 16 }}>
@@ -1099,7 +1201,12 @@ export function EventSummaryPage() {
                 if (!summary || exportingInvoice) return;
                 setExportingInvoice(true);
                 try {
-                  await downloadProducerInvoice(event, summary, tickets);
+                  await downloadProducerInvoice(
+                    event,
+                    summary,
+                    tickets,
+                    extraExpenses,
+                  );
                 } catch (err) {
                   console.error("invoice export failed", err);
                   await ask(
@@ -1208,6 +1315,14 @@ export function EventSummaryPage() {
             <div>
               תאורן: <span dir="ltr">{formatMoney(lightmanN)}</span>
             </div>
+            {extraExpenses.map((e) => (
+              <div key={e.id}>
+                <span className="row-value" dir="auto">
+                  {e.name?.trim() || "הוצאה ללא שם"}
+                </span>
+                : <span dir="ltr">{formatMoney(e.amount)}</span>
+              </div>
+            ))}
             <div
               style={{
                 fontWeight: 600,
@@ -1292,6 +1407,7 @@ export function EventSummaryPage() {
           event={event}
           summary={summary}
           tickets={tickets}
+          extraExpenses={extraExpenses}
           producerEmail={producerEmail}
           sender={sender}
           onClose={() => setSendInvoiceOpen(false)}
