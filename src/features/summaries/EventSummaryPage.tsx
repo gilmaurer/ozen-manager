@@ -682,9 +682,21 @@ export function EventSummaryPage() {
   const stereoRecordN = Number(stereoRecord) || 0;
   const channelsRecordN = Number(channelsRecord) || 0;
   const lightmanN = Number(lightman) || 0;
-  const clubOthersIncome = stereoRecordN + channelsRecordN + lightmanN;
+  const acumN = Number(acum) || 0;
+  const extraExpensesTotal = extraExpenses.reduce(
+    (s, e) => s + (Number(e.amount) || 0),
+    0,
+  );
+  // Four fixed items: services the club provides and bills the producer for.
+  // Reduce producer net AND show as club income.
+  const fixedAdditionalTotal =
+    acumN + stereoRecordN + channelsRecordN + lightmanN;
+  // Card-bottom display total = everything in the card.
+  const additionalExpensesTotal = fixedAdditionalTotal + extraExpensesTotal;
+  const clubOthersIncome = fixedAdditionalTotal;
   const clubTotalRevenue = clubTicketIncome + barIncome + clubOthersIncome;
-  const expenses = staffTotal + clubCampaignExpense + barExp;
+  const expenses =
+    staffTotal + clubCampaignExpense + barExp + extraExpensesTotal;
   const clubNet = clubTotalRevenue - expenses;
 
   const producerCampaignPct = 100 - campaignPct;
@@ -694,14 +706,7 @@ export function EventSummaryPage() {
       : ticketBaseForDeal - clubTicketShare;
   const producerCampaignExpense =
     campaignAmountN * (producerCampaignPct / 100);
-  const acumN = Number(acum) || 0;
-  const extraExpensesTotal = extraExpenses.reduce(
-    (s, e) => s + (Number(e.amount) || 0),
-    0,
-  );
-  const additionalExpensesTotal =
-    acumN + stereoRecordN + channelsRecordN + lightmanN + extraExpensesTotal;
-  const producerExpenses = producerCampaignExpense + additionalExpensesTotal;
+  const producerExpenses = producerCampaignExpense + fixedAdditionalTotal;
   const producerNet = producerTicketShare - producerExpenses;
   const producerNetExVat = producerNet / (1 + VAT_RATE);
 
@@ -1151,6 +1156,14 @@ export function EventSummaryPage() {
               הוצאות בר (25%):{" "}
               <span dir="ltr">{formatMoney(barOperatingExpense)}</span>
             </div>
+            {extraExpenses.map((e) => (
+              <div key={e.id}>
+                <span className="row-value" dir="auto">
+                  {e.name?.trim() || "הוצאה ללא שם"}
+                </span>
+                : <span dir="ltr">{formatMoney(e.amount)}</span>
+              </div>
+            ))}
             <div
               style={{
                 fontWeight: 600,
@@ -1201,12 +1214,7 @@ export function EventSummaryPage() {
                 if (!summary || exportingInvoice) return;
                 setExportingInvoice(true);
                 try {
-                  await downloadProducerInvoice(
-                    event,
-                    summary,
-                    tickets,
-                    extraExpenses,
-                  );
+                  await downloadProducerInvoice(event, summary, tickets);
                 } catch (err) {
                   console.error("invoice export failed", err);
                   await ask(
@@ -1315,14 +1323,6 @@ export function EventSummaryPage() {
             <div>
               תאורן: <span dir="ltr">{formatMoney(lightmanN)}</span>
             </div>
-            {extraExpenses.map((e) => (
-              <div key={e.id}>
-                <span className="row-value" dir="auto">
-                  {e.name?.trim() || "הוצאה ללא שם"}
-                </span>
-                : <span dir="ltr">{formatMoney(e.amount)}</span>
-              </div>
-            ))}
             <div
               style={{
                 fontWeight: 600,
@@ -1407,7 +1407,6 @@ export function EventSummaryPage() {
           event={event}
           summary={summary}
           tickets={tickets}
-          extraExpenses={extraExpenses}
           producerEmail={producerEmail}
           sender={sender}
           onClose={() => setSendInvoiceOpen(false)}

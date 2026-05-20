@@ -37,7 +37,10 @@ export function clubTakeBreakdown(
   const campaignPct = event.campaign ?? 0;
   const campaign = campaignAmt * (campaignPct / 100);
   const others =
-    (a.stereo_record ?? 0) + (a.channels_record ?? 0) + (a.lightman ?? 0);
+    (a.acum ?? 0) +
+    (a.stereo_record ?? 0) +
+    (a.channels_record ?? 0) +
+    (a.lightman ?? 0);
   const total = ticketsClub + bar + commission + campaign + others;
   return { ticketsClub, bar, commission, campaign, others, total };
 }

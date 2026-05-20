@@ -5,7 +5,6 @@ import { save } from "@tauri-apps/plugin-dialog";
 import type {
   EventSummaryRow,
   EventWithProducer,
-  SummaryExtraExpenseRow,
   SummaryTicketRow,
 } from "../../db/types";
 import { OZEN_SOURCE, VAT_RATE, ozenCommission } from "./summariesRepo";
@@ -96,7 +95,6 @@ export function computeInvoice(
   event: EventWithProducer,
   summary: EventSummaryRow,
   tickets: SummaryTicketRow[],
-  extraExpenses: SummaryExtraExpenseRow[] = [],
 ) {
   const presale = tickets.filter((t) => t.kind === "presale");
   const boxOffice = tickets.filter((t) => t.kind === "box_office");
@@ -128,8 +126,6 @@ export function computeInvoice(
   const stereo = summary.stereo_record ?? 0;
   const channels = summary.channels_record ?? 0;
   const lightman = summary.lightman ?? 0;
-  const extras = extraExpenses.map((e) => ({ name: e.name, amount: e.amount }));
-  const extrasTotal = extras.reduce((s, e) => s + e.amount, 0);
 
   const producerNet =
     producerTicketShare -
@@ -137,8 +133,7 @@ export function computeInvoice(
     acum -
     stereo -
     channels -
-    lightman -
-    extrasTotal;
+    lightman;
   const producerNetExVat = producerNet / (1 + VAT_RATE);
 
   return {
@@ -154,7 +149,6 @@ export function computeInvoice(
     stereo,
     channels,
     lightman,
-    extras,
     producerNet,
     producerNetExVat,
   };
@@ -248,7 +242,6 @@ function renderDeductions(
   stereo: number,
   channels: number,
   lightman: number,
-  extras: Array<{ name: string; amount: number }>,
 ): string {
   const rows: Array<[string, number]> = [];
   if (producerCampaign > 0) rows.push(["חלק המפיק מהקמפיין", producerCampaign]);
@@ -256,9 +249,6 @@ function renderDeductions(
   if (stereo > 0) rows.push(["הקלטת סטריאו", stereo]);
   if (channels > 0) rows.push(["הקלטת ערוצים", channels]);
   if (lightman > 0) rows.push(["תאורן", lightman]);
-  for (const e of extras) {
-    if (e.amount > 0) rows.push([escapeHtml(e.name || "—"), e.amount]);
-  }
   if (rows.length === 0) return "";
   return `
     <table class="totals-table">
@@ -283,10 +273,9 @@ function buildInvoiceHtml(
   event: EventWithProducer,
   summary: EventSummaryRow,
   tickets: SummaryTicketRow[],
-  extraExpenses: SummaryExtraExpenseRow[],
   logoSrc: string | null,
 ): string {
-  const i = computeInvoice(event, summary, tickets, extraExpenses);
+  const i = computeInvoice(event, summary, tickets);
 
   const presaleBlocks =
     renderPresaleBlocks(i.presale, i.presaleSources) ||
@@ -298,7 +287,6 @@ function buildInvoiceHtml(
     i.stereo,
     i.channels,
     i.lightman,
-    i.extras,
   );
 
   return fillTemplate(invoiceTemplate, {
@@ -347,10 +335,9 @@ export async function generateProducerInvoicePdf(
   event: EventWithProducer,
   summary: EventSummaryRow,
   tickets: SummaryTicketRow[],
-  extraExpenses: SummaryExtraExpenseRow[] = [],
 ): Promise<Uint8Array> {
   const logoSrc = await getLogoDataUrl();
-  const html = buildInvoiceHtml(event, summary, tickets, extraExpenses, logoSrc);
+  const html = buildInvoiceHtml(event, summary, tickets, logoSrc);
 
   const host = document.createElement("div");
   host.style.cssText =
@@ -435,14 +422,8 @@ export async function downloadProducerInvoice(
   event: EventWithProducer,
   summary: EventSummaryRow,
   tickets: SummaryTicketRow[],
-  extraExpenses: SummaryExtraExpenseRow[] = [],
 ): Promise<void> {
-  const bytes = await generateProducerInvoicePdf(
-    event,
-    summary,
-    tickets,
-    extraExpenses,
-  );
+  const bytes = await generateProducerInvoicePdf(event, summary, tickets);
   const safeName = (event.name ?? "event").replace(/[\\/:*?"<>|]/g, "_");
   const defaultPath = `סיכום_אירוע_${safeName}_${event.date}.pdf`;
   const path = await save({

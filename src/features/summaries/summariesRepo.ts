@@ -218,7 +218,10 @@ export interface SummaryAggregate {
   channels_record: number;
   lightman: number;
   extra_expenses_total: number;
-  additional_expenses: number;
+  // Producer-side: the 4 fixed items the producer reimburses the club for.
+  producer_additional_expenses: number;
+  // Club-side: out-of-pocket manual extras the club pays.
+  club_extra_expenses: number;
 }
 
 export async function listSummaryAggregates(): Promise<
@@ -312,7 +315,8 @@ export async function listSummaryAggregates(): Promise<
       channels_record: channels,
       lightman,
       extra_expenses_total: extra,
-      additional_expenses: acum + stereo + channels + lightman + extra,
+      producer_additional_expenses: acum + stereo + channels + lightman,
+      club_extra_expenses: extra,
     });
   }
   return byEventId;
