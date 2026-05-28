@@ -643,6 +643,8 @@ export function EventsPage() {
             {view === "calendar" ? (
               <EventsCalendar
                 events={filteredEvents}
+                cursor={monthCursor}
+                onCursorChange={setMonthCursor}
                 onStatusChange={handleStatusChange}
               />
             ) : showNoMatches ? (

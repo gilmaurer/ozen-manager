@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: "1.1.2",
+    date: "2026-05-28",
+    items: [
+      "אירועים — תצוגת לוח שנה: בחירת חודש מהתפריט הנפתח שבסרגל הסינון מעדכנת את הלוח (עד כה התפריט לא השפיע בתצוגת הלוח). בנוסף, מעבר בין תצוגת רשימה ללוח שנה שומר על החודש הנבחר",
+    ],
+  },
+  {
     version: "1.1.0",
     date: "2026-05-28",
     items: [

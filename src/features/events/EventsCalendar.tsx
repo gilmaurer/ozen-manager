@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import type { EventStatus, EventWithProducer } from "../../db/types";
 import { formatDate } from "../../utils/format";
@@ -31,12 +31,18 @@ function byDateThenTime(
 
 interface Props {
   events: EventWithProducer[];
+  cursor: Date;
+  onCursorChange: (next: Date) => void;
   onStatusChange: (event: EventWithProducer, next: EventStatus) => void;
 }
 
-export function EventsCalendar({ events, onStatusChange }: Props) {
+export function EventsCalendar({
+  events,
+  cursor,
+  onCursorChange,
+  onStatusChange,
+}: Props) {
   const { statusByCode, typeByCode } = useEnums();
-  const [cursor, setCursor] = useState<Date>(() => startOfMonth(new Date()));
 
   const { weeks, monthEvents } = useMemo(() => {
     const byDate = new Map<string, EventWithProducer[]>();
@@ -83,11 +89,13 @@ export function EventsCalendar({ events, onStatusChange }: Props) {
   }, [events, cursor]);
 
   function shift(delta: number) {
-    setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + delta, 1));
+    onCursorChange(
+      new Date(cursor.getFullYear(), cursor.getMonth() + delta, 1),
+    );
   }
 
   function goToday() {
-    setCursor(startOfMonth(new Date()));
+    onCursorChange(startOfMonth(new Date()));
   }
 
   return (
