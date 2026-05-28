@@ -88,7 +88,7 @@ export function forecastClubBreakdown(
   const staffCost = event.type
     ? staffCostByType.get(`${event.type}|${event.sub_type ?? ""}`) ?? 0
     : 0;
-  const expenses = staffCost + campaign;
+  const expenses = staffCost;
   const net = total - expenses;
   return { ticketsClub, bar, commission, campaign, others, total, expenses, net };
 }

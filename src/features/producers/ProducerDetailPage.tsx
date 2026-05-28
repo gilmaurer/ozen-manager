@@ -76,7 +76,7 @@ export function ProducerDetailPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [sortedEvents.length]);
+  }, [sort]);
 
   const totalPages = Math.max(1, Math.ceil(sortedEvents.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages - 1);

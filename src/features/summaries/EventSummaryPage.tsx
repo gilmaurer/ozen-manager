@@ -676,7 +676,7 @@ export function EventSummaryPage() {
   const barTotal = barIncome - barExp;
   const counterN = counter === "" ? null : Number(counter);
   const perHead =
-    counterN && counterN > 0 && Number.isFinite(counterN)
+    counterN !== null && counterN > 0 && Number.isFinite(counterN)
       ? barTotal / counterN
       : null;
   const staffTotal = workers.reduce(

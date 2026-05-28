@@ -230,20 +230,15 @@ export async function listSummaryAggregates(): Promise<
   const [sumsRes, ticketsRes, extrasRes] = await Promise.all([
     supabase.from("event_summaries").select("*"),
     supabase.from("summary_tickets").select("*"),
-    supabase
-      .from("summary_extra_expenses")
-      .select("summary_id, amount")
-      .then(
-        (r) => r,
-        // Tolerate the table not existing yet (pre-migration). Treat as empty.
-        () => ({ data: [], error: null }),
-      ),
+    supabase.from("summary_extra_expenses").select("summary_id, amount"),
   ]);
   if (sumsRes.error) throw sumsRes.error;
   if (ticketsRes.error) throw ticketsRes.error;
+  // Tolerate "table does not exist" (42P01) for pre-migration envs; surface all other errors.
+  if (extrasRes.error && extrasRes.error.code !== "42P01") throw extrasRes.error;
   const summaries = (sumsRes.data ?? []) as EventSummaryRow[];
   const tickets = (ticketsRes.data ?? []) as SummaryTicketRow[];
-  const extras = (extrasRes.error ? [] : (extrasRes.data ?? [])) as Array<{
+  const extras = (extrasRes.data ?? []) as Array<{
     summary_id: number;
     amount: number;
   }>;
@@ -326,23 +321,25 @@ export async function replacePresaleTickets(
   summaryId: number,
   rows: Array<{ price: number; quantity: number }>,
 ): Promise<void> {
-  const { error: delErr } = await supabase
-    .from("summary_tickets")
-    .delete()
-    .eq("summary_id", summaryId)
-    .eq("kind", "presale");
-  if (delErr) throw delErr;
-  if (rows.length === 0) return;
-  const payload = rows.map((r) => ({
-    summary_id: summaryId,
-    kind: "presale" as const,
-    price: r.price,
-    quantity: r.quantity,
-    source: OZEN_SOURCE,
-    commission: ozenCommission(r.price, r.quantity),
-  }));
-  const { error: insErr } = await supabase
-    .from("summary_tickets")
-    .insert(payload);
-  if (insErr) throw insErr;
+  return withRetry(async () => {
+    const { error: delErr } = await supabase
+      .from("summary_tickets")
+      .delete()
+      .eq("summary_id", summaryId)
+      .eq("kind", "presale");
+    if (delErr) throw delErr;
+    if (rows.length === 0) return;
+    const payload = rows.map((r) => ({
+      summary_id: summaryId,
+      kind: "presale" as const,
+      price: r.price,
+      quantity: r.quantity,
+      source: OZEN_SOURCE,
+      commission: ozenCommission(r.price, r.quantity),
+    }));
+    const { error: insErr } = await supabase
+      .from("summary_tickets")
+      .insert(payload);
+    if (insErr) throw insErr;
+  });
 }

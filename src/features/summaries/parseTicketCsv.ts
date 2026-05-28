@@ -26,6 +26,7 @@ function findKey(
 function parsePrice(v: unknown): number | null {
   if (typeof v === "number") return Number.isFinite(v) ? v : null;
   if (typeof v === "string") {
+    if (v.trim() === "") return null;
     const n = Number(v.replace(/[^\d.-]/g, ""));
     return Number.isFinite(n) ? n : null;
   }

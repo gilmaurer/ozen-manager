@@ -198,18 +198,21 @@ export function PaymentsPage() {
 
   async function refresh() {
     setLoading(true);
-    const [all, a] = await Promise.all([
-      listEvents(),
-      listSummaryAggregates().catch(() => new Map<number, SummaryAggregate>()),
-    ]);
-    setEvents(
-      all.filter(
-        (e) =>
-          TABS.includes(e.status as Tab) || e.status === WAITING_PAYMENT_OZEN,
-      ),
-    );
-    setAggs(a);
-    setLoading(false);
+    try {
+      const [all, a] = await Promise.all([
+        listEvents(),
+        listSummaryAggregates().catch(() => new Map<number, SummaryAggregate>()),
+      ]);
+      setEvents(
+        all.filter(
+          (e) =>
+            TABS.includes(e.status as Tab) || e.status === WAITING_PAYMENT_OZEN,
+        ),
+      );
+      setAggs(a);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {

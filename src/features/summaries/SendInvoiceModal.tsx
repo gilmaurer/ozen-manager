@@ -6,6 +6,7 @@ import type {
 } from "../../db/types";
 import { supabase } from "../../db/supabase";
 import { sendMailViaGmail } from "../../services/gmail";
+import { withFreshProviderToken } from "../../services/googleReauth";
 import {
   CurrentSender,
   DEFAULT_BODY,
@@ -100,14 +101,16 @@ export function SendInvoiceModal({
       );
       const safeName = (event.name ?? "event").replace(/[\\/:*?"<>|]/g, "_");
       const pdfFilename = `סיכום_אירוע_${safeName}_${event.date}.pdf`;
-      await sendMailViaGmail({
-        to: producerEmail,
-        subject,
-        body,
-        pdfBytes,
-        pdfFilename,
-        accessToken: sender.providerToken,
-      });
+      await withFreshProviderToken((token) =>
+        sendMailViaGmail({
+          to: producerEmail,
+          subject,
+          body,
+          pdfBytes,
+          pdfFilename,
+          accessToken: token,
+        }),
+      );
       // Auto-advance event status to waiting_invoice. Non-blocking:
       // the email already went out, so a stale status shouldn't hide that.
       try {

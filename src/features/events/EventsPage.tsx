@@ -170,22 +170,25 @@ export function EventsPage() {
 
   async function refresh() {
     setLoading(true);
-    const [evs, prods, aggs, staffRows] = await Promise.all([
-      listEvents(),
-      listProducers(),
-      listSummaryAggregates().catch(() => new Map<number, SummaryAggregate>()),
-      listAllEventTypeStaff().catch(() => []),
-    ]);
-    const staffMap = new Map<string, number>();
-    for (const r of staffRows) {
-      const key = `${r.event_type_code}|${r.sub_type ?? ""}`;
-      staffMap.set(key, (staffMap.get(key) ?? 0) + r.cost);
+    try {
+      const [evs, prods, aggs, staffRows] = await Promise.all([
+        listEvents(),
+        listProducers(),
+        listSummaryAggregates().catch(() => new Map<number, SummaryAggregate>()),
+        listAllEventTypeStaff().catch(() => []),
+      ]);
+      const staffMap = new Map<string, number>();
+      for (const r of staffRows) {
+        const key = `${r.event_type_code}|${r.sub_type ?? ""}`;
+        staffMap.set(key, (staffMap.get(key) ?? 0) + r.cost);
+      }
+      setEvents(evs);
+      setProducers(prods);
+      setSummaryAggs(aggs);
+      setStaffCostByType(staffMap);
+    } finally {
+      setLoading(false);
     }
-    setEvents(evs);
-    setProducers(prods);
-    setSummaryAggs(aggs);
-    setStaffCostByType(staffMap);
-    setLoading(false);
   }
 
   useEffect(() => {
