@@ -12,19 +12,15 @@ export function UpdateBanner() {
     return null;
   }
 
-  const bg =
-    state.status === "error" ? "#fdecec" : "#fff6db";
-  const border =
-    state.status === "error" ? "#f5b5b5" : "#f0c674";
-  const fg = state.status === "error" ? "#8a1f1f" : "#4a3800";
+  const isError = state.status === "error";
 
   return (
     <div
       dir="rtl"
       style={{
-        background: bg,
-        border: `1px solid ${border}`,
-        color: fg,
+        background: isError ? "var(--danger-bg-soft)" : "var(--warn-bg-soft)",
+        border: `1px solid ${isError ? "var(--danger)" : "var(--warn)"}`,
+        color: isError ? "var(--danger)" : "var(--warn)",
         padding: "8px 14px",
         fontSize: 13,
         display: "flex",

@@ -40,6 +40,7 @@ import {
   predictAll,
 } from "../forecast/forecastEngine";
 import { listAllEventTypeStaff } from "../summaries/settingsRepo";
+import { useTheme } from "../../services/useTheme";
 
 interface Filters {
   type: EventType | "";
@@ -80,7 +81,25 @@ const COLORS = {
   perHead: "#f4a261",
 };
 
+function useChartColors() {
+  const { theme } = useTheme();
+  return useMemo(() => {
+    const s = getComputedStyle(document.documentElement);
+    const v = (n: string) => s.getPropertyValue(n).trim();
+    return {
+      grid: v("--border"),
+      axis: v("--text-muted"),
+      tooltipBg: v("--bg-panel"),
+      tooltipBorder: v("--border"),
+      cursor: theme === "light"
+        ? "rgba(107,70,224,0.08)"
+        : "rgba(124,92,255,0.08)",
+    };
+  }, [theme]);
+}
+
 export function DashboardPage() {
+  const chart = useChartColors();
   const { types, typeByCode, statusByCode } = useEnums();
   const [events, setEvents] = useState<EventWithProducer[]>([]);
   const [aggs, setAggs] = useState<Map<number, SummaryAggregate>>(
@@ -648,10 +667,10 @@ export function DashboardPage() {
             <div className="chart-wrap" style={{ height: 320 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={incomeOverTime}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3c" />
-                  <XAxis dataKey="label" stroke="#8b93a7" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                  <XAxis dataKey="label" stroke={chart.axis} />
                   <YAxis
-                    stroke="#8b93a7"
+                    stroke={chart.axis}
                     tickFormatter={(v) =>
                       Math.round(Number(v)).toLocaleString("he-IL")
                     }
@@ -659,10 +678,10 @@ export function DashboardPage() {
                   <Tooltip
                     formatter={(v) => fmtMoney(Number(v))}
                     contentStyle={{
-                      background: "#171a21",
-                      border: "1px solid #2a2f3c",
+                      background: chart.tooltipBg,
+                      border: `1px solid ${chart.tooltipBorder}`,
                     }}
-                    cursor={{ fill: "rgba(124,92,255,0.08)" }}
+                    cursor={{ fill: chart.cursor }}
                   />
                   <Legend />
                   <Bar
@@ -717,10 +736,10 @@ export function DashboardPage() {
                     data={incomeByType}
                     margin={{ left: 40 }}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3c" />
+                    <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                     <XAxis
                       type="number"
-                      stroke="#8b93a7"
+                      stroke={chart.axis}
                       tickFormatter={(v) =>
                         Math.round(Number(v)).toLocaleString("he-IL")
                       }
@@ -728,7 +747,7 @@ export function DashboardPage() {
                     <YAxis
                       type="category"
                       dataKey="label"
-                      stroke="#8b93a7"
+                      stroke={chart.axis}
                       width={110}
                     />
                     <Tooltip
@@ -737,10 +756,10 @@ export function DashboardPage() {
                         "סה\"כ",
                       ]}
                       contentStyle={{
-                        background: "#171a21",
-                        border: "1px solid #2a2f3c",
+                        background: chart.tooltipBg,
+                        border: `1px solid ${chart.tooltipBorder}`,
                       }}
-                      cursor={{ fill: "rgba(124,92,255,0.08)" }}
+                      cursor={{ fill: chart.cursor }}
                     />
                     <Bar dataKey="total" fill={COLORS.tickets} />
                   </BarChart>
@@ -861,10 +880,10 @@ export function DashboardPage() {
             <div className="chart-wrap" style={{ height: 320 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={attendanceTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3c" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                   <XAxis
                     dataKey="date"
-                    stroke="#8b93a7"
+                    stroke={chart.axis}
                     tickFormatter={(v) => formatDate(String(v))}
                   />
                   <YAxis
@@ -883,8 +902,8 @@ export function DashboardPage() {
                   <Tooltip
                     labelFormatter={(v) => formatDate(String(v))}
                     contentStyle={{
-                      background: "#171a21",
-                      border: "1px solid #2a2f3c",
+                      background: chart.tooltipBg,
+                      border: `1px solid ${chart.tooltipBorder}`,
                     }}
                     formatter={(v, name) => {
                       if (name === "משתתפים")
@@ -939,10 +958,10 @@ export function DashboardPage() {
             <div className="chart-wrap" style={{ height: 320 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={forecastIncomeOverTime}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3c" />
-                  <XAxis dataKey="label" stroke="#8b93a7" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
+                  <XAxis dataKey="label" stroke={chart.axis} />
                   <YAxis
-                    stroke="#8b93a7"
+                    stroke={chart.axis}
                     tickFormatter={(v) =>
                       Math.round(Number(v)).toLocaleString("he-IL")
                     }
@@ -950,10 +969,10 @@ export function DashboardPage() {
                   <Tooltip
                     formatter={(v) => fmtMoney(Number(v))}
                     contentStyle={{
-                      background: "#171a21",
-                      border: "1px solid #2a2f3c",
+                      background: chart.tooltipBg,
+                      border: `1px solid ${chart.tooltipBorder}`,
                     }}
-                    cursor={{ fill: "rgba(124,92,255,0.08)" }}
+                    cursor={{ fill: chart.cursor }}
                   />
                   <Legend />
                   <Bar
@@ -1007,10 +1026,10 @@ export function DashboardPage() {
                   data={forecastIncomeByType}
                   margin={{ left: 40 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3c" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
                   <XAxis
                     type="number"
-                    stroke="#8b93a7"
+                    stroke={chart.axis}
                     tickFormatter={(v) =>
                       Math.round(Number(v)).toLocaleString("he-IL")
                     }
@@ -1018,7 +1037,7 @@ export function DashboardPage() {
                   <YAxis
                     type="category"
                     dataKey="label"
-                    stroke="#8b93a7"
+                    stroke={chart.axis}
                     width={110}
                   />
                   <Tooltip
@@ -1027,10 +1046,10 @@ export function DashboardPage() {
                       "סה\"כ",
                     ]}
                     contentStyle={{
-                      background: "#171a21",
-                      border: "1px solid #2a2f3c",
+                      background: chart.tooltipBg,
+                      border: `1px solid ${chart.tooltipBorder}`,
                     }}
-                    cursor={{ fill: "rgba(124,92,255,0.08)" }}
+                    cursor={{ fill: chart.cursor }}
                   />
                   <Bar dataKey="total" fill={COLORS.tickets} />
                 </BarChart>

@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import { HashRouter, NavLink, Route, Routes } from "react-router-dom";
 import ozenLogo from "./assets/ozen-logo.png";
 import { BackupStatus } from "./components/BackupStatus";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { DialogProvider, useDialog } from "./components/dialog";
 import { AuthGate } from "./features/auth/AuthGate";
 import { useIsAdmin } from "./features/auth/useIsAdmin";
@@ -201,6 +202,7 @@ function Sidebar() {
       <div className="sidebar-footer">
         <BackupStatus />
         <UpdateCheckButton />
+        <ThemeToggle />
         <UserChip />
       </div>
     </nav>

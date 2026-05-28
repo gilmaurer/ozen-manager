@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" href="/src/assets/ozen-logo.png" />
     <title>אוזן – ניהול מועדון</title>
+    <script>
+      try {
+        var t = localStorage.getItem("ozen.theme");
+        if (t === "light") document.documentElement.dataset.theme = "light";
+      } catch (e) {}
+    </script>
   </head>
 
   <body>

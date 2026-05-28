@@ -10,6 +10,8 @@
   --danger: #ef476f;
   --success: #2ec27e;
   --warn: #f4a261;
+  --warn-bg-soft: rgba(244, 162, 97, 0.15);
+  --danger-bg-soft: rgba(239, 71, 111, 0.12);
 
   --radius: 10px;
   --shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
@@ -19,6 +21,34 @@
   font-size: 15px;
   line-height: 1.55;
 }
+
+:root[data-theme="light"] {
+  --bg: #f5f6f9;
+  --bg-panel: #ffffff;
+  --bg-panel-hover: #eef0f4;
+  --border: #e2e6ee;
+  --text: #1a1f2e;
+  --text-muted: #6b7280;
+  --accent: #6b46e0;
+  --accent-hover: #5a36d0;
+  --danger: #d93a5b;
+  --success: #16a06a;
+  --warn: #d97706;
+  --warn-bg-soft: #fff6db;
+  --danger-bg-soft: #fdecec;
+
+  --shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+
+  color-scheme: light;
+}
+
+:root[data-theme="light"] .badge-color-gray        { background: rgba(107, 114, 128, 0.14); }
+:root[data-theme="light"] .badge-color-purple      { background: rgba(107, 70, 224, 0.12);  }
+:root[data-theme="light"] .badge-color-green       { background: rgba(22, 160, 106, 0.14);  }
+:root[data-theme="light"] .badge-color-orange      { background: rgba(217, 119, 6, 0.14);   }
+:root[data-theme="light"] .badge-color-red         { background: rgba(217, 58, 91, 0.12);   }
+:root[data-theme="light"] .badge-color-yellow      { background: rgba(217, 119, 6, 0.10);   }
+:root[data-theme="light"] .badge-color-green-muted { background: rgba(22, 160, 106, 0.10);  }
 
 * {
   box-sizing: border-box;
@@ -110,6 +140,25 @@ h3 { font-size: 16px; }
   transition: background 0.15s;
 }
 .user-chip:hover { background: var(--bg-panel-hover); }
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.theme-toggle:hover { background: var(--bg-panel-hover); }
+.theme-toggle svg { flex: 0 0 auto; color: var(--text-muted); }
+.theme-toggle:hover svg { color: var(--text); }
 .user-chip-avatar {
   width: 28px;
   height: 28px;

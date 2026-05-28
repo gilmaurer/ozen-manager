@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: "1.3.0",
+    date: "2026-05-28",
+    items: [
+      "ערכת נושא: כפתור החלפה בין מצב כהה למצב בהיר בתחתית סרגל הצד; הבחירה נשמרת על המכשיר",
+    ],
+  },
+  {
     version: "1.1.2",
     date: "2026-05-28",
     items: [
