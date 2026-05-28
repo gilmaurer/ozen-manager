@@ -7,6 +7,7 @@ import type { SummaryAggregate } from "./summariesRepo";
 import { deriveTotals, type DerivedTotals } from "../forecast/forecastDerive";
 import { basisLabel } from "../forecast/forecastEngine";
 import { formatDate } from "../../utils/format";
+import { CollapsibleCard } from "../../components/CollapsibleCard";
 
 interface Props {
   forecast: EventForecastRow;
@@ -56,12 +57,15 @@ export function ForecastVsActualCard({
 
   if (forecast.basis === "none" || !forecast.predicted) {
     return (
-      <div className="card" style={cardStyle}>
-        <h2>צפי מול ביצוע</h2>
+      <CollapsibleCard
+        title="צפי מול ביצוע"
+        defaultOpen={false}
+        style={cardStyle}
+      >
         <div className="muted">
           לא היה מספיק מידע היסטורי כדי לחזות אירוע זה.
         </div>
-      </div>
+      </CollapsibleCard>
     );
   }
 
@@ -132,8 +136,11 @@ export function ForecastVsActualCard({
   const sourceCount = forecast.sources.length;
 
   return (
-    <div className="card" style={cardStyle}>
-      <h2 style={{ marginBottom: 6 }}>צפי מול ביצוע</h2>
+    <CollapsibleCard
+      title="צפי מול ביצוע"
+      defaultOpen={false}
+      style={cardStyle}
+    >
       <div className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
         מבוסס על: {basisLabel(forecast.basis)} · ממוצע מ-{sourceCount}{" "}
         {sourceCount === 1 ? "אירוע" : "אירועים"} · נכון לתאריך{" "}
@@ -199,6 +206,6 @@ export function ForecastVsActualCard({
           })}
         </tbody>
       </table>
-    </div>
+    </CollapsibleCard>
   );
 }

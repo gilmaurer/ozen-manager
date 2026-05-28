@@ -11,6 +11,7 @@ import {
   updateEventWorker,
   workerCost,
 } from "./eventWorkersRepo";
+import { CollapsibleCard } from "../../components/CollapsibleCard";
 
 function formatMoney(n: number): string {
   return `${n.toLocaleString("he-IL", { maximumFractionDigits: 2 })} ₪`;
@@ -332,19 +333,20 @@ export function EventWorkersCard({
   const noTitles = jobTitles.length === 0;
 
   return (
-    <div className="card" style={{ marginBottom: 16 }}>
-      <div className="page-header" style={{ marginBottom: 12 }}>
-        <h2>צוות</h2>
-        {!adding && !noStaff && !noTitles && (
+    <CollapsibleCard
+      title="צוות"
+      style={{ marginBottom: 16 }}
+      headerExtra={
+        !adding && !noStaff && !noTitles ? (
           <button
             className="btn btn-secondary btn-sm"
             onClick={() => setAdding(true)}
           >
             + הוסף עובד
           </button>
-        )}
-      </div>
-
+        ) : null
+      }
+    >
       {workers.length === 0 && !adding ? (
         <div className="empty">
           {noStaff || noTitles
@@ -392,6 +394,6 @@ export function EventWorkersCard({
           סה"כ צוות: {formatMoney(staffTotal)}
         </div>
       )}
-    </div>
+    </CollapsibleCard>
   );
 }

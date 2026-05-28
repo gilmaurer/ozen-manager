@@ -31,9 +31,15 @@ import { useEnums } from "../../services/enums";
 import {
   ageDays,
   clubTakeBreakdown,
+  forecastClubBreakdown,
   monthKey,
   monthLabel,
 } from "./metrics";
+import {
+  ForecastResult,
+  predictAll,
+} from "../forecast/forecastEngine";
+import { listAllEventTypeStaff } from "../summaries/settingsRepo";
 
 interface Filters {
   type: EventType | "";
@@ -58,7 +64,11 @@ function fmtNumber(n: number): string {
   return Math.round(n).toLocaleString("he-IL");
 }
 
-const OUTSTANDING_STATUSES = new Set(["waiting_invoice", "waiting_payment"]);
+const OUTSTANDING_STATUSES = new Set([
+  "waiting_invoice",
+  "waiting_payment",
+  "ממתין_לתשלום_לאוזן_4689",
+]);
 
 const COLORS = {
   tickets: "#7c5cff",
@@ -76,6 +86,12 @@ export function DashboardPage() {
   const [aggs, setAggs] = useState<Map<number, SummaryAggregate>>(
     () => new Map(),
   );
+  const [forecasts, setForecasts] = useState<Map<number, ForecastResult>>(
+    () => new Map(),
+  );
+  const [staffCostByType, setStaffCostByType] = useState<Map<string, number>>(
+    () => new Map(),
+  );
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [allTimes, setAllTimes] = useState(false);
@@ -90,14 +106,22 @@ export function DashboardPage() {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const [all, a] = await Promise.all([
+      const [all, a, staffRows] = await Promise.all([
         listEvents(),
         listSummaryAggregates().catch(
           () => new Map<number, SummaryAggregate>(),
         ),
+        listAllEventTypeStaff().catch(() => []),
       ]);
+      const staffMap = new Map<string, number>();
+      for (const r of staffRows) {
+        const key = `${r.event_type_code}|${r.sub_type ?? ""}`;
+        staffMap.set(key, (staffMap.get(key) ?? 0) + r.cost);
+      }
       setEvents(all);
       setAggs(a);
+      setStaffCostByType(staffMap);
+      setForecasts(predictAll(all, a));
       setLoading(false);
     })();
   }, []);
@@ -288,6 +312,150 @@ export function DashboardPage() {
     }));
     return { rows };
   }, [filteredEvents]);
+
+  // --- Forecast aggregations -------------------------------------------
+
+  const upcomingForecastEvents = useMemo(() => {
+    const todayIso = new Date().toISOString().slice(0, 10);
+    return filteredEvents.filter(
+      (e) => !e.has_summary && e.date >= todayIso,
+    );
+  }, [filteredEvents]);
+
+  const forecastableEvents = useMemo(
+    () =>
+      upcomingForecastEvents.filter((e) => {
+        const fc = forecasts.get(e.id);
+        return fc && fc.basis !== "none" && fc.predicted;
+      }),
+    [upcomingForecastEvents, forecasts],
+  );
+
+  const forecastKpi = useMemo(() => {
+    let total = 0;
+    let net = 0;
+    let attended = 0;
+    let attendanceEvents = 0;
+    for (const e of forecastableEvents) {
+      const fc = forecasts.get(e.id);
+      const br = forecastClubBreakdown(e, fc?.predicted ?? null, staffCostByType);
+      total += br.total;
+      net += br.net;
+      const counter = fc?.predicted?.counter;
+      if (counter != null && counter > 0) {
+        attended += counter;
+        attendanceEvents += 1;
+      }
+    }
+    const count = forecastableEvents.length;
+    return {
+      total,
+      count,
+      avgIncome: count ? total / count : 0,
+      avgAttendance: attendanceEvents ? attended / attendanceEvents : 0,
+      avgNet: count ? net / count : 0,
+    };
+  }, [forecastableEvents, forecasts, staffCostByType]);
+
+  const forecastIncomeOverTime = useMemo(() => {
+    const buckets = new Map<
+      string,
+      {
+        key: string;
+        label: string;
+        tickets: number;
+        bar: number;
+        commission: number;
+        campaign: number;
+        others: number;
+      }
+    >();
+    for (const e of forecastableEvents) {
+      const fc = forecasts.get(e.id);
+      const br = forecastClubBreakdown(e, fc?.predicted ?? null, staffCostByType);
+      const key = monthKey(e.date);
+      const cur = buckets.get(key) ?? {
+        key,
+        label: monthLabel(key),
+        tickets: 0,
+        bar: 0,
+        commission: 0,
+        campaign: 0,
+        others: 0,
+      };
+      cur.tickets += br.ticketsClub;
+      cur.bar += br.bar;
+      cur.commission += br.commission;
+      cur.campaign += br.campaign;
+      cur.others += br.others;
+      buckets.set(key, cur);
+    }
+    return Array.from(buckets.values()).sort((a, b) =>
+      a.key.localeCompare(b.key),
+    );
+  }, [forecastableEvents, forecasts, staffCostByType]);
+
+  const forecastIncomeByType = useMemo(() => {
+    const byCode = new Map<string, { total: number; count: number }>();
+    for (const e of forecastableEvents) {
+      const fc = forecasts.get(e.id);
+      const br = forecastClubBreakdown(e, fc?.predicted ?? null, staffCostByType);
+      const code = e.type ?? "—";
+      const cur = byCode.get(code) ?? { total: 0, count: 0 };
+      cur.total += br.total;
+      cur.count += 1;
+      byCode.set(code, cur);
+    }
+    return Array.from(byCode.entries())
+      .map(([code, v]) => ({
+        code,
+        label: code === "—" ? "ללא סוג" : typeByCode[code]?.label ?? code,
+        total: v.total,
+        count: v.count,
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [forecastableEvents, forecasts, staffCostByType, typeByCode]);
+
+  const forecastTopEvents = useMemo(() => {
+    return forecastableEvents
+      .map((e) => {
+        const fc = forecasts.get(e.id);
+        const br = forecastClubBreakdown(e, fc?.predicted ?? null, staffCostByType);
+        return {
+          event: e,
+          total: br.total,
+          net: br.net,
+          counter: fc?.predicted?.counter ?? null,
+        };
+      })
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 10);
+  }, [forecastableEvents, forecasts, staffCostByType]);
+
+  const forecastTopProducers = useMemo(() => {
+    const byId = new Map<
+      number,
+      { id: number; name: string; total: number; count: number }
+    >();
+    for (const e of forecastableEvents) {
+      if (e.producer_id == null) continue;
+      const fc = forecasts.get(e.id);
+      const br = forecastClubBreakdown(e, fc?.predicted ?? null, staffCostByType);
+      const cur = byId.get(e.producer_id) ?? {
+        id: e.producer_id,
+        name: e.producer_name ?? `#${e.producer_id}`,
+        total: 0,
+        count: 0,
+      };
+      cur.total += br.total;
+      cur.count += 1;
+      byId.set(e.producer_id, cur);
+    }
+    return Array.from(byId.values())
+      .map((p) => ({ ...p, avg: p.total / Math.max(1, p.count) }))
+      .sort((a, b) => b.avg - a.avg)
+      .slice(0, 10);
+  }, [forecastableEvents, forecasts, staffCostByType]);
 
   // --- UI ---------------------------------------------------------------
 
@@ -744,6 +912,233 @@ export function DashboardPage() {
               </ResponsiveContainer>
             </div>
           )}
+        </div>
+
+        {/* Forecast section — aggregations for upcoming events without summaries */}
+        <h2 style={{ marginTop: 8, marginBottom: 0 }}>צפי</h2>
+
+        <div className="kpi-grid">
+          <KpiTile label='סה"כ הכנסות צפויות' value={fmtMoney(forecastKpi.total)} />
+          <KpiTile label="מספר אירועים עתידיים" value={fmtNumber(forecastKpi.count)} />
+          <KpiTile
+            label="ממוצע הכנסה צפויה לאירוע"
+            value={fmtMoney(forecastKpi.avgIncome)}
+          />
+          <KpiTile
+            label="ממוצע משתתפים צפוי"
+            value={fmtNumber(forecastKpi.avgAttendance)}
+          />
+          <KpiTile label="ממוצע נטו צפוי לאירוע" value={fmtMoney(forecastKpi.avgNet)} />
+        </div>
+
+        <div className="card">
+          <h2>צפי הכנסות לפי חודש</h2>
+          {forecastIncomeOverTime.length === 0 ? (
+            <div className="empty">אין אירועים עתידיים בטווח זה.</div>
+          ) : (
+            <div className="chart-wrap" style={{ height: 320 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={forecastIncomeOverTime}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3c" />
+                  <XAxis dataKey="label" stroke="#8b93a7" />
+                  <YAxis
+                    stroke="#8b93a7"
+                    tickFormatter={(v) =>
+                      Math.round(Number(v)).toLocaleString("he-IL")
+                    }
+                  />
+                  <Tooltip
+                    formatter={(v) => fmtMoney(Number(v))}
+                    contentStyle={{
+                      background: "#171a21",
+                      border: "1px solid #2a2f3c",
+                    }}
+                    cursor={{ fill: "rgba(124,92,255,0.08)" }}
+                  />
+                  <Legend />
+                  <Bar
+                    dataKey="tickets"
+                    name="כרטיסים (חלק המועדון)"
+                    stackId="a"
+                    fill={COLORS.tickets}
+                  />
+                  <Bar
+                    dataKey="bar"
+                    name="בר"
+                    stackId="a"
+                    fill={COLORS.bar}
+                  />
+                  <Bar
+                    dataKey="commission"
+                    name="עמלת אתר האוזן"
+                    stackId="a"
+                    fill={COLORS.commission}
+                  />
+                  <Bar
+                    dataKey="campaign"
+                    name="קמפיין"
+                    stackId="a"
+                    fill={COLORS.campaign}
+                  />
+                  <Bar
+                    dataKey="others"
+                    name="אחר"
+                    stackId="a"
+                    fill={COLORS.others}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+        <div className="card">
+          <h2>צפי הכנסות לפי סוג אירוע</h2>
+          {forecastIncomeByType.length === 0 ? (
+            <div className="empty">אין אירועים עתידיים בטווח זה.</div>
+          ) : (
+            <div
+              className="chart-wrap"
+              style={{ height: Math.max(220, forecastIncomeByType.length * 40 + 40) }}
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  layout="vertical"
+                  data={forecastIncomeByType}
+                  margin={{ left: 40 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2f3c" />
+                  <XAxis
+                    type="number"
+                    stroke="#8b93a7"
+                    tickFormatter={(v) =>
+                      Math.round(Number(v)).toLocaleString("he-IL")
+                    }
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="label"
+                    stroke="#8b93a7"
+                    width={110}
+                  />
+                  <Tooltip
+                    formatter={(v, _n, p) => [
+                      `${fmtMoney(Number(v))} · ${(p as { payload: { count: number } }).payload.count} אירועים`,
+                      "סה\"כ",
+                    ]}
+                    contentStyle={{
+                      background: "#171a21",
+                      border: "1px solid #2a2f3c",
+                    }}
+                    cursor={{ fill: "rgba(124,92,255,0.08)" }}
+                  />
+                  <Bar dataKey="total" fill={COLORS.tickets} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+        <div className="card-grid">
+          <div className="card">
+            <h2>אירועים מובילים — צפי</h2>
+            {forecastTopEvents.length === 0 ? (
+              <div className="empty">אין אירועים עתידיים בטווח זה.</div>
+            ) : (
+              <table className="centered">
+                <thead>
+                  <tr>
+                    <th>שם</th>
+                    <th>תאריך</th>
+                    <th>מפיק</th>
+                    <th>משתתפים צפויים</th>
+                    <th>נטו צפוי</th>
+                    <th>סה"כ צפוי למועדון</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {forecastTopEvents.map((r) => (
+                    <tr key={r.event.id}>
+                      <td>
+                        <Link
+                          to={`/events/${r.event.id}`}
+                          className="row-value"
+                          dir="auto"
+                        >
+                          {r.event.name}
+                        </Link>
+                      </td>
+                      <td
+                        className="muted"
+                        dir="ltr"
+                        style={{ textAlign: "start" }}
+                      >
+                        {formatDate(r.event.date)}
+                      </td>
+                      <td className="row-value" dir="auto">
+                        {r.event.producer_name ?? "—"}
+                      </td>
+                      <td dir="ltr" style={{ textAlign: "start" }}>
+                        {r.counter == null ? "—" : fmtNumber(r.counter)}
+                      </td>
+                      <td dir="ltr" style={{ textAlign: "start" }}>
+                        {fmtMoney(r.net)}
+                      </td>
+                      <td
+                        dir="ltr"
+                        style={{ textAlign: "start", fontWeight: 600 }}
+                      >
+                        {fmtMoney(r.total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="card">
+            <h2>מפיקים מובילים — צפי</h2>
+            {forecastTopProducers.length === 0 ? (
+              <div className="empty">אין אירועים עתידיים בטווח זה.</div>
+            ) : (
+              <table className="centered">
+                <thead>
+                  <tr>
+                    <th>מפיק</th>
+                    <th>אירועים עתידיים</th>
+                    <th>סה"כ צפוי למועדון</th>
+                    <th>ממוצע צפוי לאירוע</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {forecastTopProducers.map((p) => (
+                    <tr key={p.id}>
+                      <td>
+                        <Link
+                          to={`/producers/${p.id}`}
+                          className="row-value"
+                          dir="auto"
+                        >
+                          {p.name}
+                        </Link>
+                      </td>
+                      <td>{fmtNumber(p.count)}</td>
+                      <td
+                        dir="ltr"
+                        style={{ textAlign: "start", fontWeight: 600 }}
+                      >
+                        {fmtMoney(p.total)}
+                      </td>
+                      <td dir="ltr" style={{ textAlign: "start" }}>
+                        {fmtMoney(p.total / Math.max(1, p.count))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
 
         {/* Tile 8 — Outstanding payments */}

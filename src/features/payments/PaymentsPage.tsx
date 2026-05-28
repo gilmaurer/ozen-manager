@@ -40,6 +40,7 @@ import {
 
 type Tab = "waiting_invoice" | "waiting_payment" | "done";
 const TABS: Tab[] = ["waiting_invoice", "waiting_payment", "done"];
+const WAITING_PAYMENT_OZEN = "ממתין_לתשלום_לאוזן_4689";
 
 type Direction = "outgoing" | "incoming";
 const DIRECTION_LABELS: Record<Direction, string> = {
@@ -201,7 +202,12 @@ export function PaymentsPage() {
       listEvents(),
       listSummaryAggregates().catch(() => new Map<number, SummaryAggregate>()),
     ]);
-    setEvents(all.filter((e) => TABS.includes(e.status as Tab)));
+    setEvents(
+      all.filter(
+        (e) =>
+          TABS.includes(e.status as Tab) || e.status === WAITING_PAYMENT_OZEN,
+      ),
+    );
     setAggs(a);
     setLoading(false);
   }
@@ -219,7 +225,15 @@ export function PaymentsPage() {
       direction === "incoming" ? totalsForIncoming : totalsFor;
     return events
       .filter((e) => e.deal_type === wantedDeal)
-      .filter((e) => e.status === tab)
+      .filter((e) => {
+        if (tab === "waiting_payment" && direction === "incoming") {
+          return (
+            e.status === "waiting_payment" ||
+            e.status === WAITING_PAYMENT_OZEN
+          );
+        }
+        return e.status === tab;
+      })
       .filter((e) => matches(filters, e, allTimes))
       .filter((e) => {
         if (!applyMonth) return true;
@@ -332,7 +346,11 @@ export function PaymentsPage() {
       if (!url) return; // user cancelled
       await updateEventInvoiceUrl(e.id, url);
       if (e.status === "waiting_invoice") {
-        await updateEventStatus(e.id, "waiting_payment");
+        const next =
+          e.deal_type === "fit_price"
+            ? WAITING_PAYMENT_OZEN
+            : "waiting_payment";
+        await updateEventStatus(e.id, next);
       }
       await refresh();
     } catch (err) {
@@ -440,7 +458,14 @@ export function PaymentsPage() {
       : e.deal_type === "split",
   );
   const hasEvents = directionalEvents.length > 0;
-  const tabHasEvents = directionalEvents.some((e) => e.status === tab);
+  const tabHasEvents = directionalEvents.some((e) => {
+    if (tab === "waiting_payment" && direction === "incoming") {
+      return (
+        e.status === "waiting_payment" || e.status === WAITING_PAYMENT_OZEN
+      );
+    }
+    return e.status === tab;
+  });
 
   return (
     <>
@@ -472,7 +497,9 @@ export function PaymentsPage() {
                 className={tab === t ? "active" : ""}
                 onClick={() => setTab(t)}
               >
-                {statusByCode[t]?.label ?? t}
+                {t === "waiting_payment"
+                  ? "ממתין לתשלום"
+                  : statusByCode[t]?.label ?? t}
               </button>
             ))}
           </div>
@@ -821,7 +848,11 @@ export function PaymentsPage() {
                       <InlineStatusSelect
                         value={e.status}
                         onChange={(next) => handleStatusChange(e, next)}
-                        allowedCodes={TABS}
+                        allowedCodes={
+                          direction === "incoming"
+                            ? [...TABS, WAITING_PAYMENT_OZEN]
+                            : TABS
+                        }
                       />
                     </td>
                     <td

@@ -52,6 +52,47 @@ export function clubTakeOf(
   return clubTakeBreakdown(event, aggs).total;
 }
 
+export interface ForecastClubBreakdown extends ClubTakeBreakdown {
+  expenses: number;
+  net: number;
+}
+
+const EMPTY_FORECAST: ForecastClubBreakdown = {
+  ...EMPTY,
+  expenses: 0,
+  net: 0,
+};
+
+export function forecastClubBreakdown(
+  event: EventWithProducer,
+  predicted: SummaryAggregate | null,
+  staffCostByType: Map<string, number>,
+): ForecastClubBreakdown {
+  if (!predicted) return EMPTY_FORECAST;
+  const ticketBase =
+    (predicted.presale_revenue ?? 0) -
+    (predicted.presale_commissions ?? 0) +
+    (predicted.box_office_revenue ?? 0);
+  const ticketsClub = clubTicketShareOf(event, ticketBase);
+  const bar = predicted.bar_total ?? 0;
+  const commission = predicted.ozen_commission ?? 0;
+  const campaignAmt = event.campaign_amount ?? 0;
+  const campaignPct = event.campaign ?? 0;
+  const campaign = campaignAmt * (campaignPct / 100);
+  const others =
+    (predicted.acum ?? 0) +
+    (predicted.stereo_record ?? 0) +
+    (predicted.channels_record ?? 0) +
+    (predicted.lightman ?? 0);
+  const total = ticketsClub + bar + commission + campaign + others;
+  const staffCost = event.type
+    ? staffCostByType.get(`${event.type}|${event.sub_type ?? ""}`) ?? 0
+    : 0;
+  const expenses = staffCost + campaign;
+  const net = total - expenses;
+  return { ticketsClub, bar, commission, campaign, others, total, expenses, net };
+}
+
 export function monthKey(iso: string): string {
   return iso.slice(0, 7);
 }

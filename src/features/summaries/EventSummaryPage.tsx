@@ -44,6 +44,7 @@ import type { EventForecastRow } from "../../db/types";
 import { freezeForecast } from "../forecast/forecastsRepo";
 import { listAllEventTypeStaff } from "./settingsRepo";
 import { ForecastVsActualCard } from "./ForecastVsActualCard";
+import { CollapsibleCard } from "../../components/CollapsibleCard";
 
 function formatMoney(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return "—";
@@ -806,11 +807,7 @@ export function EventSummaryPage() {
       </div>
 
       {/* Tickets */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="page-header" style={{ marginBottom: 12 }}>
-          <h2>כרטיסים</h2>
-        </div>
-
+      <CollapsibleCard title="כרטיסים" style={{ marginBottom: 16 }}>
         <h3 style={{ fontSize: 14, marginBottom: 8 }}>מכירה מוקדמת</h3>
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
           <button className="btn btn-sm" onClick={() => setCsvOpen(true)}>
@@ -927,11 +924,10 @@ export function EventSummaryPage() {
             </div>
           )}
         </div>
-      </div>
+      </CollapsibleCard>
 
       {/* Counter */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <h2>מונה</h2>
+      <CollapsibleCard title="מונה" style={{ marginBottom: 16 }}>
         <div className="form-row single">
           <div>
             <label>מספר אנשים שנכחו</label>
@@ -944,11 +940,10 @@ export function EventSummaryPage() {
             />
           </div>
         </div>
-      </div>
+      </CollapsibleCard>
 
       {/* Bar */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <h2>בר</h2>
+      <CollapsibleCard title="בר" style={{ marginBottom: 16 }}>
         <div className="form-row single">
           <div>
             <label>הכנסות בר</label>
@@ -987,11 +982,10 @@ export function EventSummaryPage() {
             </span>
           </div>
         </div>
-      </div>
+      </CollapsibleCard>
 
       {/* Additional expenses (producer only) */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <h2>הוצאות נוספות</h2>
+      <CollapsibleCard title="הוצאות נוספות" style={{ marginBottom: 16 }}>
         <div className="muted" style={{ fontSize: 13, marginBottom: 10 }}>
           הוצאות אלו מופחתות מהמפיק בלבד ולא מהמועדון.
         </div>
@@ -1067,11 +1061,10 @@ export function EventSummaryPage() {
           סה"כ:{" "}
           <span dir="ltr">{formatMoney(additionalExpensesTotal)}</span>
         </div>
-      </div>
+      </CollapsibleCard>
 
       {/* Campaign */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <h2>קמפיין</h2>
+      <CollapsibleCard title="קמפיין" style={{ marginBottom: 16 }}>
         {event.campaign_amount == null && event.campaign == null ? (
           <div className="empty">
             לא הוגדרו פרטי קמפיין.{" "}
@@ -1101,7 +1094,7 @@ export function EventSummaryPage() {
             </div>
           </div>
         )}
-      </div>
+      </CollapsibleCard>
 
       {/* Staff (per-event workers) */}
       <EventWorkersCard
@@ -1114,8 +1107,7 @@ export function EventSummaryPage() {
       />
 
       {/* Summary strip */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <h2>סיכום כולל</h2>
+      <CollapsibleCard title="סיכום כולל" style={{ marginBottom: 16 }}>
         <div
           style={{
             display: "grid",
@@ -1245,7 +1237,7 @@ export function EventSummaryPage() {
         >
           נטו למועדון: <span dir="ltr">{formatMoney(clubNet)}</span>
         </div>
-      </div>
+      </CollapsibleCard>
 
       {forecast && actualAggregate && (
         <ForecastVsActualCard
@@ -1257,11 +1249,9 @@ export function EventSummaryPage() {
       )}
 
       {/* Producer summary */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div
-          className="page-header"
-          style={{ marginBottom: 12, alignItems: "center" }}
-        >
+      <CollapsibleCard
+        style={{ marginBottom: 16 }}
+        title={
           <h2 style={{ margin: 0 }}>
             סיכום מפיק
             {event.producer_name && (
@@ -1274,6 +1264,8 @@ export function EventSummaryPage() {
               </span>
             )}
           </h2>
+        }
+        headerExtra={
           <div style={{ display: "flex", gap: 8 }}>
             <button
               className="btn btn-sm"
@@ -1327,7 +1319,8 @@ export function EventSummaryPage() {
               </button>
             )}
           </div>
-        </div>
+        }
+      >
         <div
           style={{
             display: "grid",
@@ -1424,7 +1417,7 @@ export function EventSummaryPage() {
             </span>
           </div>
         </div>
-      </div>
+      </CollapsibleCard>
 
       <div
         className="card"

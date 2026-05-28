@@ -4,7 +4,12 @@ import { supabase } from "../db/supabase";
 import { withFreshProviderToken } from "./googleReauth";
 
 const MISSING_TOKEN = "missing Google access token";
-const PAYMENT_STATUSES = ["waiting_invoice", "waiting_payment", "done"];
+const PAYMENT_STATUSES = [
+  "waiting_invoice",
+  "waiting_payment",
+  "done",
+  "ממתין_לתשלום_לאוזן_4689",
+];
 
 export type BackupResult =
   | { ok: true }

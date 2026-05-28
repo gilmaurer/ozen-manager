@@ -69,6 +69,15 @@ h3 { font-size: 16px; }
   gap: 8px;
 }
 
+.sidebar-version {
+  margin-top: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 4px 0 0;
+  letter-spacing: 0.02em;
+}
+
 .sidebar-footer {
   margin-top: auto;
   display: flex;
@@ -76,6 +85,10 @@ h3 { font-size: 16px; }
   gap: 6px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
+}
+
+.sidebar-version + .sidebar-footer {
+  margin-top: 0;
 }
 .backup-status-error    { color: var(--danger); border-color: var(--danger); }
 .backup-status-disabled { color: var(--text-muted); font-style: italic; }
@@ -273,6 +286,33 @@ h3 { font-size: 16px; }
   overflow-x: auto;
 }
 
+.collapsible-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.collapsible-header {
+  background: transparent;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+}
+.collapsible-header h2 { margin: 0; }
+.collapsible-chevron {
+  display: inline-block;
+  transition: transform 0.15s ease;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.collapsible-chevron.is-open { transform: rotate(90deg); }
+
 .card-grid {
   display: grid;
   gap: 16px;
@@ -437,6 +477,16 @@ input, select, textarea {
 input:focus, select:focus, textarea:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 label {

@@ -13,6 +13,8 @@ export interface ParseResult {
   warning?: string;
 }
 
+const VALID_STATUSES = new Set(["completed", "processing"]);
+
 function findKey(
   row: Record<string, unknown>,
   target: string,
@@ -64,7 +66,7 @@ export async function parseTicketCsv(file: File): Promise<ParseResult> {
   for (const row of rows) {
     if (statusKey) {
       const status = String(row[statusKey] ?? "").trim().toLowerCase();
-      if (status !== "completed") {
+      if (!VALID_STATUSES.has(status)) {
         skippedCount++;
         continue;
       }

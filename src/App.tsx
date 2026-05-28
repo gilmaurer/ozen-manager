@@ -21,6 +21,7 @@ import { PaymentsPage } from "./features/payments/PaymentsPage";
 import { UpdaterProvider } from "./features/updates/UpdaterProvider";
 import { UpdateBanner } from "./features/updates/UpdateBanner";
 import { UpdateCheckButton } from "./features/updates/UpdateCheckButton";
+import { WhatsNewGate } from "./features/changelog/WhatsNewGate";
 
 function OfflineBanner() {
   const [offline, setOffline] = useState(
@@ -194,6 +195,9 @@ function Sidebar() {
           הגדרות
         </NavLink>
       )}
+      <div className="sidebar-version" aria-label="גרסה" dir="ltr">
+        v{__APP_VERSION__}
+      </div>
       <div className="sidebar-footer">
         <BackupStatus />
         <UpdateCheckButton />
@@ -236,6 +240,7 @@ export default function App() {
             <HashRouter>
               <UpdateBanner />
               <OfflineBanner />
+              <WhatsNewGate />
               <div className="layout">
                 <Sidebar />
                 <main className="main">
