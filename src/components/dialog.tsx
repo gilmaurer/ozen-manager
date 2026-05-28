@@ -51,7 +51,12 @@ export function DialogProvider({ children }: { children: ReactNode }) {
         await op();
         return true;
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
+        const msg =
+          e instanceof Error
+            ? e.message
+            : e && typeof e === "object" && typeof (e as { message?: unknown }).message === "string"
+              ? (e as { message: string }).message
+              : String(e);
         await notify(msg);
         return false;
       }

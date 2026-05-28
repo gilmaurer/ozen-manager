@@ -190,6 +190,7 @@ function JobTitlesCard({
 }
 
 export function StaffPage() {
+  const { ask, run } = useDialog();
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [jobTitles, setJobTitles] = useState<JobTitleRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -238,9 +239,10 @@ export function StaffPage() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm("למחוק את איש/ת הצוות?")) return;
-    await deleteStaff(id);
-    await refresh();
+    if (!(await ask("למחוק את איש/ת הצוות?"))) return;
+    if (await run(() => deleteStaff(id))) {
+      await refresh();
+    }
   }
 
   return (

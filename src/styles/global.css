@@ -455,6 +455,12 @@ label {
 }
 .form-row.single { grid-template-columns: 1fr; }
 
+.form-error {
+  color: var(--danger, #dc2626);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

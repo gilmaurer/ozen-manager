@@ -61,14 +61,21 @@ export function EventForm({ initial, producers, onSubmit, onCancel }: Props) {
   );
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
 
   const subTypeOptions = type ? SUB_TYPES_BY_TYPE[type] ?? [] : [];
   const hasSub = subTypeOptions.length > 0;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !date) return;
-    if (hasSub && !subType) return;
+    const next: Record<string, boolean> = {};
+    if (!name.trim()) next.name = true;
+    if (!date) next.date = true;
+    if (!type) next.type = true;
+    if (hasSub && !subType) next.subType = true;
+    if (!producer.trim()) next.producer = true;
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
     setSubmitting(true);
     try {
       await onSubmit({
@@ -111,26 +118,38 @@ export function EventForm({ initial, producers, onSubmit, onCancel }: Props) {
     <form onSubmit={handleSubmit}>
       <div className="form-row single">
         <div>
-          <label>שם</label>
+          <label>שם *</label>
           <input
             dir="auto"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (errors.name) setErrors((p) => ({ ...p, name: false }));
+            }}
             required
             autoFocus
           />
+          {errors.name && (
+            <div className="form-error">שדה חובה</div>
+          )}
         </div>
       </div>
 
       <div className="form-row">
         <div>
-          <label>תאריך</label>
+          <label>תאריך *</label>
           <input
             type="date"
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            onChange={(e) => {
+              setDate(e.target.value);
+              if (errors.date) setErrors((p) => ({ ...p, date: false }));
+            }}
             required
           />
+          {errors.date && (
+            <div className="form-error">שדה חובה</div>
+          )}
         </div>
         <div>
           <label>שעה</label>
@@ -142,13 +161,15 @@ export function EventForm({ initial, producers, onSubmit, onCancel }: Props) {
           />
         </div>
         <div>
-          <label>סוג</label>
+          <label>סוג *</label>
           <select
             value={type}
             onChange={(e) => {
               setType(e.target.value as EventType | "");
               setSubType("");
+              if (errors.type) setErrors((p) => ({ ...p, type: false }));
             }}
+            required
           >
             <option value="">—</option>
             {types.map((t) => (
@@ -157,16 +178,23 @@ export function EventForm({ initial, producers, onSubmit, onCancel }: Props) {
               </option>
             ))}
           </select>
+          {errors.type && (
+            <div className="form-error">שדה חובה</div>
+          )}
         </div>
       </div>
 
       {hasSub && (
         <div className="form-row single">
           <div>
-            <label>תת-סוג</label>
+            <label>תת-סוג *</label>
             <select
               value={subType}
-              onChange={(e) => setSubType(e.target.value)}
+              onChange={(e) => {
+                setSubType(e.target.value);
+                if (errors.subType)
+                  setErrors((p) => ({ ...p, subType: false }));
+              }}
               required
             >
               <option value="">—</option>
@@ -176,25 +204,36 @@ export function EventForm({ initial, producers, onSubmit, onCancel }: Props) {
                 </option>
               ))}
             </select>
+            {errors.subType && (
+              <div className="form-error">שדה חובה</div>
+            )}
           </div>
         </div>
       )}
 
       <div className="form-row">
         <div>
-          <label>מפיק</label>
+          <label>מפיק *</label>
           <input
             dir="auto"
             list="producer-options"
             value={producer}
-            onChange={(e) => setProducer(e.target.value)}
+            onChange={(e) => {
+              setProducer(e.target.value);
+              if (errors.producer)
+                setErrors((p) => ({ ...p, producer: false }));
+            }}
             placeholder="הקלידו או בחרו מפיק"
+            required
           />
           <datalist id="producer-options">
             {producers.map((p) => (
               <option key={p.id} value={p.name} />
             ))}
           </datalist>
+          {errors.producer && (
+            <div className="form-error">שדה חובה</div>
+          )}
         </div>
         <div>
           <label>סטטוס</label>

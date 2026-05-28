@@ -70,6 +70,8 @@ create policy "allowed users can read"  on public.your_table for select to authe
 create policy "allowed users can write" on public.your_table for all    to authenticated using (public.is_allowed_user()) with check (public.is_allowed_user());
 ```
 
+`event_forecasts` holds frozen prediction snapshots — one per event, written the first time `freezeForecast` is called (`src/features/forecast/forecastsRepo.ts`). The summary page calls `freezeForecast` on mount; once a row exists it is never overwritten, so edits to source summaries do not ripple through to forecasts that already used them.
+
 ## Auth flow
 - First launch: `AuthGate` (`src/features/auth/AuthGate.tsx`) shows `LoginPage` — one "התחבר עם Google" button.
 - Click → Rust opens a localhost loopback listener (`start_auth_listener` in `src-tauri/src/auth_loopback.rs`), frontend asks Supabase for an OAuth URL with `redirectTo: http://localhost:<port>/auth/callback`, `skipBrowserRedirect: true`, and `access_type=offline` + `prompt=consent`. System browser opens; Google returns to the loopback; the captured code is exchanged via `supabase.auth.exchangeCodeForSession`.

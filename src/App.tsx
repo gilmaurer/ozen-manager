@@ -11,6 +11,7 @@ import { EnumsProvider } from "./services/enums";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { EventsPage } from "./features/events/EventsPage";
 import { EventDetailPage } from "./features/events/EventDetailPage";
+import { ForecastPage } from "./features/forecast/ForecastPage";
 import { ProducersPage } from "./features/producers/ProducersPage";
 import { ProducerDetailPage } from "./features/producers/ProducerDetailPage";
 import { SettingsPage } from "./features/settings/SettingsPage";
@@ -174,6 +175,9 @@ function Sidebar() {
       <NavLink to="/events" className="nav-link">
         אירועים
       </NavLink>
+      <NavLink to="/forecast" className="nav-link">
+        צפי
+      </NavLink>
       <NavLink to="/payments" className="nav-link">
         תשלומים
       </NavLink>
@@ -240,6 +244,7 @@ export default function App() {
                     <Route path="/events" element={<EventsPage />} />
                     <Route path="/events/:id" element={<EventDetailPage />} />
                     <Route path="/events/:id/summary" element={<EventSummaryPage />} />
+                    <Route path="/forecast" element={<ForecastPage />} />
                     <Route path="/payments" element={<PaymentsPage />} />
                     <Route path="/producers" element={<ProducersPage />} />
                     <Route path="/producers/:id" element={<ProducerDetailPage />} />

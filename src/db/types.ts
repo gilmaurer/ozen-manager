@@ -130,3 +130,32 @@ export interface ShiftWithStaff extends ShiftRow {
   staff_name: string | null;
   event_name: string;
 }
+
+export type ForecastBasisCode = "name_producer" | "producer" | "type" | "none";
+
+export interface PredictedAggregate {
+  tickets_count: number;
+  tickets_revenue: number;
+  presale_revenue: number;
+  box_office_revenue: number;
+  presale_commissions: number;
+  ozen_commission: number;
+  bar_total: number;
+  counter: number | null;
+  acum: number;
+  stereo_record: number;
+  channels_record: number;
+  lightman: number;
+  extra_expenses_total: number;
+  producer_additional_expenses: number;
+  club_extra_expenses: number;
+}
+
+export interface EventForecastRow {
+  event_id: number;
+  basis: ForecastBasisCode;
+  sources: number[];
+  predicted: PredictedAggregate | null;
+  effective_date: string;
+  created_at: string;
+}

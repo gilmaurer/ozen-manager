@@ -40,6 +40,10 @@ import { SendInvoiceModal } from "./SendInvoiceModal";
 import { useSenderState } from "./emailInvoice";
 import { getProducer } from "../producers/producersRepo";
 import { supabase } from "../../db/supabase";
+import type { EventForecastRow } from "../../db/types";
+import { freezeForecast } from "../forecast/forecastsRepo";
+import { listAllEventTypeStaff } from "./settingsRepo";
+import { ForecastVsActualCard } from "./ForecastVsActualCard";
 
 function formatMoney(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return "—";
@@ -443,6 +447,10 @@ export function EventSummaryPage() {
   const [stereoRecord, setStereoRecord] = useState("0");
   const [channelsRecord, setChannelsRecord] = useState("0");
   const [lightman, setLightman] = useState("0");
+  const [forecast, setForecast] = useState<EventForecastRow | null>(null);
+  const [staffCostByType, setStaffCostByType] = useState<Map<string, number>>(
+    () => new Map(),
+  );
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -453,14 +461,21 @@ export function EventSummaryPage() {
       return;
     }
     const sum = await ensureSummaryForEvent(eventId);
-    const [ts, ee, ws, sl, jt, prod] = await Promise.all([
+    const [ts, ee, ws, sl, jt, prod, fc, staffRows] = await Promise.all([
       listTickets(sum.id),
       listExtraExpenses(sum.id),
       listEventWorkers(eventId),
       listStaff(),
       listJobTitles(),
       ev.producer_id ? getProducer(ev.producer_id) : Promise.resolve(null),
+      freezeForecast(eventId).catch(() => null),
+      listAllEventTypeStaff().catch(() => []),
     ]);
+    const staffMap = new Map<string, number>();
+    for (const r of staffRows) {
+      const key = `${r.event_type_code}|${r.sub_type ?? ""}`;
+      staffMap.set(key, (staffMap.get(key) ?? 0) + r.cost);
+    }
     setEvent(ev);
     setSummary(sum);
     setTickets(ts);
@@ -469,6 +484,8 @@ export function EventSummaryPage() {
     setStaffList(sl);
     setJobTitles(jt);
     setProducerEmail(prod?.email ?? null);
+    setForecast(fc);
+    setStaffCostByType(staffMap);
     setBarIncomeInput(String((sum.bar_cash ?? 0) + (sum.bar_credit ?? 0)));
     setAcum(String(sum.acum ?? 0));
     setStereoRecord(String(sum.stereo_record ?? 0));
@@ -698,6 +715,47 @@ export function EventSummaryPage() {
   const expenses =
     staffTotal + clubCampaignExpense + barExp + extraExpensesTotal;
   const clubNet = clubTotalRevenue - expenses;
+
+  const actualAggregate = useMemo(() => {
+    if (!summary) return null;
+    return {
+      event_id: eventId,
+      tickets_count: totalTickets,
+      tickets_revenue: totalTicketRevenue,
+      presale_revenue: presaleRevenue,
+      box_office_revenue: boxOfficeRevenue,
+      presale_commissions: presaleCommissions,
+      ozen_commission: ozenCommissionTotal,
+      bar_total:
+        (summary.bar_cash ?? 0) +
+        (summary.bar_credit ?? 0) -
+        (summary.bar_expenses ?? 0),
+      counter: counterN,
+      acum: acumN,
+      stereo_record: stereoRecordN,
+      channels_record: channelsRecordN,
+      lightman: lightmanN,
+      extra_expenses_total: extraExpensesTotal,
+      producer_additional_expenses: fixedAdditionalTotal,
+      club_extra_expenses: extraExpensesTotal,
+    };
+  }, [
+    summary,
+    eventId,
+    totalTickets,
+    totalTicketRevenue,
+    presaleRevenue,
+    boxOfficeRevenue,
+    presaleCommissions,
+    ozenCommissionTotal,
+    counterN,
+    acumN,
+    stereoRecordN,
+    channelsRecordN,
+    lightmanN,
+    extraExpensesTotal,
+    fixedAdditionalTotal,
+  ]);
 
   const producerCampaignPct = 100 - campaignPct;
   const producerTicketShare =
@@ -1188,6 +1246,15 @@ export function EventSummaryPage() {
           נטו למועדון: <span dir="ltr">{formatMoney(clubNet)}</span>
         </div>
       </div>
+
+      {forecast && actualAggregate && (
+        <ForecastVsActualCard
+          forecast={forecast}
+          actual={actualAggregate}
+          event={event}
+          staffCostByType={staffCostByType}
+        />
+      )}
 
       {/* Producer summary */}
       <div className="card" style={{ marginBottom: 16 }}>

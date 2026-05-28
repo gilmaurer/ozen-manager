@@ -55,6 +55,18 @@ export async function toggleStaffActive(
 
 export async function deleteStaff(id: number): Promise<void> {
   return withRetry(async () => {
+    const { error: shiftsErr } = await supabase
+      .from("shifts")
+      .update({ staff_id: null })
+      .eq("staff_id", id);
+    if (shiftsErr) throw shiftsErr;
+
+    const { error: workersErr } = await supabase
+      .from("event_workers")
+      .delete()
+      .eq("staff_id", id);
+    if (workersErr) throw workersErr;
+
     const { error } = await supabase.from("staff").delete().eq("id", id);
     if (error) throw error;
   });
