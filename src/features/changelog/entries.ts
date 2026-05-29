@@ -6,6 +6,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: "1.3.2",
+    date: "2026-05-29",
+    items: [
+      "צפי: עמודות הטבלה ניתנות למיון — לחיצה על כותרת עמודה ממיינת לפי אותה עמודה",
+      "אירועים: כפתור 'כל הזמנים' מוסתר בתצוגת לוח שנה",
+    ],
+  },
+  {
     version: "1.3.1",
     date: "2026-05-28",
     items: [
