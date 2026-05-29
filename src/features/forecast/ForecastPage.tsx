@@ -59,6 +59,23 @@ function filtersActive(f: Filters): boolean {
 
 type Scope = "upcoming" | "all";
 
+type ForecastSortKey =
+  | "name"
+  | "date"
+  | "type"
+  | "producer"
+  | "ticketsCount"
+  | "ticketsRevenue"
+  | "clubTicketIncome"
+  | "barTotal"
+  | "counter"
+  | "barPerHead"
+  | "clubTotalRevenue"
+  | "expenses"
+  | "net";
+
+type ForecastSort = { key: ForecastSortKey; dir: "asc" | "desc" };
+
 const SCOPE_STORAGE_KEY = "ozen.forecast.scope";
 
 function todayIso(): string {
@@ -105,6 +122,7 @@ export function ForecastPage() {
   const [monthCursor, setMonthCursor] = useState<Date>(() =>
     startOfMonth(new Date()),
   );
+  const [sort, setSort] = useState<ForecastSort>({ key: "date", dir: "asc" });
   const { statuses, types, typeByCode } = useEnums();
 
   useEffect(() => {
@@ -182,12 +200,94 @@ export function ForecastPage() {
         expenses,
         net,
         counter,
+        ticketsCount: a?.tickets_count ?? 0,
+        barPerHead: counter && counter > 0 ? barTotal / counter : 0,
       };
     });
   }, [filteredEvents, forecasts, staffCostByType]);
 
+  const sortedRows = useMemo(() => {
+    const copy = [...rows];
+    copy.sort((a, b) => {
+      let av: string | number;
+      let bv: string | number;
+      switch (sort.key) {
+        case "name":
+          av = a.event.name;
+          bv = b.event.name;
+          break;
+        case "date":
+          av = a.event.date;
+          bv = b.event.date;
+          break;
+        case "type":
+          av = a.event.type ?? "";
+          bv = b.event.type ?? "";
+          break;
+        case "producer":
+          av = a.event.producer_name ?? "";
+          bv = b.event.producer_name ?? "";
+          break;
+        case "ticketsCount":
+          av = a.ticketsCount;
+          bv = b.ticketsCount;
+          break;
+        case "ticketsRevenue":
+          av = a.ticketsRevenue;
+          bv = b.ticketsRevenue;
+          break;
+        case "clubTicketIncome":
+          av = a.clubTicketIncome;
+          bv = b.clubTicketIncome;
+          break;
+        case "barTotal":
+          av = a.barTotal;
+          bv = b.barTotal;
+          break;
+        case "counter":
+          av = a.counter ?? 0;
+          bv = b.counter ?? 0;
+          break;
+        case "barPerHead":
+          av = a.barPerHead;
+          bv = b.barPerHead;
+          break;
+        case "clubTotalRevenue":
+          av = a.clubTotalRevenue;
+          bv = b.clubTotalRevenue;
+          break;
+        case "expenses":
+          av = a.expenses;
+          bv = b.expenses;
+          break;
+        case "net":
+          av = a.net;
+          bv = b.net;
+          break;
+      }
+      let cmp = 0;
+      if (typeof av === "number" && typeof bv === "number") cmp = av - bv;
+      else cmp = String(av).localeCompare(String(bv), "he");
+      return sort.dir === "asc" ? cmp : -cmp;
+    });
+    return copy;
+  }, [rows, sort]);
+
   function updateFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
     setFilters((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function toggleSort(key: ForecastSortKey) {
+    setSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "desc" },
+    );
+  }
+
+  function sortArrow(key: ForecastSortKey): string {
+    if (sort.key !== key) return "";
+    return sort.dir === "asc" ? " ↑" : " ↓";
   }
 
   const hasFilters = filtersActive(filters);
@@ -408,25 +508,77 @@ export function ForecastPage() {
               <table className="centered">
                 <thead>
                   <tr>
-                    <th>שם</th>
-                    <th>תאריך</th>
-                    <th>סוג</th>
-                    <th>מפיק</th>
+                    <th>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("name")}>
+                        שם{sortArrow("name")}
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("date")}>
+                        תאריך{sortArrow("date")}
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("type")}>
+                        סוג{sortArrow("type")}
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("producer")}>
+                        מפיק{sortArrow("producer")}
+                      </button>
+                    </th>
                     <th>מבוסס על</th>
-                    <th>כרטיסים</th>
-                    <th>הכנסות כרטיסים</th>
+                    <th>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("ticketsCount")}>
+                        כרטיסים{sortArrow("ticketsCount")}
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("ticketsRevenue")}>
+                        הכנסות כרטיסים{sortArrow("ticketsRevenue")}
+                      </button>
+                    </th>
                     <th>דיל</th>
-                    <th>חלק המועדון מכרטיסים</th>
-                    <th>בר</th>
-                    <th>מונה</th>
-                    <th>בר לראש</th>
-                    <th>סה"כ הכנסות למועדון</th>
-                    <th>הוצאות</th>
-                    <th>נטו למועדון</th>
+                    <th>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("clubTicketIncome")}>
+                        חלק המועדון מכרטיסים{sortArrow("clubTicketIncome")}
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("barTotal")}>
+                        בר{sortArrow("barTotal")}
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("counter")}>
+                        מונה{sortArrow("counter")}
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("barPerHead")}>
+                        בר לראש{sortArrow("barPerHead")}
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("clubTotalRevenue")}>
+                        סה"כ הכנסות למועדון{sortArrow("clubTotalRevenue")}
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("expenses")}>
+                        הוצאות{sortArrow("expenses")}
+                      </button>
+                    </th>
+                    <th>
+                      <button type="button" className="sort-header" onClick={() => toggleSort("net")}>
+                        נטו למועדון{sortArrow("net")}
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row) => {
+                  {sortedRows.map((row) => {
                     const e = row.event;
                     const fc = row.fc;
                     const a = row.agg;
@@ -546,8 +698,8 @@ export function ForecastPage() {
                           {counter != null ? Math.round(counter) : "—"}
                         </td>
                         <td dir="ltr" style={{ textAlign: "start" }}>
-                          {counter && counter > 0
-                            ? `${(barTotal / counter).toLocaleString("he-IL", {
+                          {row.barPerHead > 0
+                            ? `${row.barPerHead.toLocaleString("he-IL", {
                                 maximumFractionDigits: 2,
                               })} ₪`
                             : "—"}

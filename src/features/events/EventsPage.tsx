@@ -608,19 +608,21 @@ export function EventsPage() {
                 }}
                 aria-label="עד תאריך"
               />
-              <button
-                className={`btn btn-secondary btn-sm${allTimes ? " active" : ""}`}
-                onClick={() => {
-                  setAllTimes((prev) => !prev);
-                  if (!allTimes) {
-                    updateFilter("from", "");
-                    updateFilter("to", "");
-                  }
-                }}
-                title="הצג אירועים מכל התאריכים"
-              >
-                כל הזמנים
-              </button>
+              {view !== "calendar" && (
+                <button
+                  className={`btn btn-secondary btn-sm${allTimes ? " active" : ""}`}
+                  onClick={() => {
+                    setAllTimes((prev) => !prev);
+                    if (!allTimes) {
+                      updateFilter("from", "");
+                      updateFilter("to", "");
+                    }
+                  }}
+                  title="הצג אירועים מכל התאריכים"
+                >
+                  כל הזמנים
+                </button>
+              )}
               {hasFilters && (
                 <button
                   className="btn btn-secondary btn-sm"
