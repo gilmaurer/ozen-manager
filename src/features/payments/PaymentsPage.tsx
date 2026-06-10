@@ -329,7 +329,7 @@ export function PaymentsPage() {
       e.deal_type === "fit_price" ? ticketBase : ticketBase - clubShare;
     const campaignAmount = e.campaign_amount ?? 0;
     const campaignPct = e.campaign ?? 0;
-    const producerCampaign = campaignAmount * ((100 - campaignPct) / 100);
+    const producerCampaign = campaignAmount * (campaignPct / 100);
     const extras = a?.producer_additional_expenses ?? 0;
     const net = producerTicketShare - producerCampaign - extras;
     return { net, netExVat: net / (1 + VAT_RATE) };

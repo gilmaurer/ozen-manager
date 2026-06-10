@@ -685,7 +685,7 @@ export function EventSummaryPage() {
   );
   const campaignPct = event?.campaign ?? 0;
   const campaignAmountN = event?.campaign_amount ?? 0;
-  const clubCampaignExpense = campaignAmountN * (campaignPct / 100);
+  const clubCampaignExpense = campaignAmountN * ((100 - campaignPct) / 100);
   const ticketBaseForDeal =
     presaleRevenue - presaleCommissions + boxOfficeRevenue;
   const clubTicketShare = event
@@ -758,7 +758,7 @@ export function EventSummaryPage() {
     fixedAdditionalTotal,
   ]);
 
-  const producerCampaignPct = 100 - campaignPct;
+  const producerCampaignPct = campaignPct;
   const producerTicketShare =
     event?.deal_type === "fit_price"
       ? ticketBaseForDeal
@@ -1193,7 +1193,7 @@ export function EventSummaryPage() {
               {campaignAmountN > 0 && (
                 <span className="muted" style={{ fontSize: 13 }}>
                   {" "}
-                  ({campaignPct}% מתוך{" "}
+                  ({100 - campaignPct}% מתוך{" "}
                   <span dir="ltr">{formatMoney(campaignAmountN)}</span>)
                 </span>
               )}

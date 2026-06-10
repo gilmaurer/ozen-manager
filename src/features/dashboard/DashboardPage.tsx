@@ -75,7 +75,6 @@ const COLORS = {
   tickets: "#7c5cff",
   bar: "#2ec27e",
   commission: "#f4a261",
-  campaign: "#ef476f",
   others: "#8b93a7",
   attendance: "#7c5cff",
   perHead: "#f4a261",
@@ -215,7 +214,6 @@ export function DashboardPage() {
         tickets: number;
         bar: number;
         commission: number;
-        campaign: number;
         others: number;
       }
     >();
@@ -227,14 +225,12 @@ export function DashboardPage() {
         tickets: 0,
         bar: 0,
         commission: 0,
-        campaign: 0,
         others: 0,
       };
       const br = clubTakeBreakdown(e, aggs);
       cur.tickets += br.ticketsClub;
       cur.bar += br.bar;
       cur.commission += br.commission;
-      cur.campaign += br.campaign;
       cur.others += br.others;
       buckets.set(key, cur);
     }
@@ -385,7 +381,6 @@ export function DashboardPage() {
         tickets: number;
         bar: number;
         commission: number;
-        campaign: number;
         others: number;
       }
     >();
@@ -399,13 +394,11 @@ export function DashboardPage() {
         tickets: 0,
         bar: 0,
         commission: 0,
-        campaign: 0,
         others: 0,
       };
       cur.tickets += br.ticketsClub;
       cur.bar += br.bar;
       cur.commission += br.commission;
-      cur.campaign += br.campaign;
       cur.others += br.others;
       buckets.set(key, cur);
     }
@@ -703,12 +696,6 @@ export function DashboardPage() {
                     fill={COLORS.commission}
                   />
                   <Bar
-                    dataKey="campaign"
-                    name="קמפיין"
-                    stackId="a"
-                    fill={COLORS.campaign}
-                  />
-                  <Bar
                     dataKey="others"
                     name="אחר"
                     stackId="a"
@@ -992,12 +979,6 @@ export function DashboardPage() {
                     name="עמלת אתר האוזן"
                     stackId="a"
                     fill={COLORS.commission}
-                  />
-                  <Bar
-                    dataKey="campaign"
-                    name="קמפיין"
-                    stackId="a"
-                    fill={COLORS.campaign}
                   />
                   <Bar
                     dataKey="others"

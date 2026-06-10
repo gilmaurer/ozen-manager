@@ -40,7 +40,7 @@ export function deriveTotals(
     : 0;
   const campaignPct = event.campaign ?? 0;
   const campaignAmount = event.campaign_amount ?? 0;
-  const clubCampaignExpense = campaignAmount * (campaignPct / 100);
+  const clubCampaignExpense = campaignAmount * ((100 - campaignPct) / 100);
   const expenses = staffCost + clubCampaignExpense;
   return {
     ticketsCount: agg.tickets_count,

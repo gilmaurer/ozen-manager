@@ -228,7 +228,7 @@ export function EventsPage() {
         : 0;
       const campaignPct = e.campaign ?? 0;
       const campaignAmount = e.campaign_amount ?? 0;
-      const clubCampaignExpense = campaignAmount * (campaignPct / 100);
+      const clubCampaignExpense = campaignAmount * ((100 - campaignPct) / 100);
       const expenses = staffCost + clubCampaignExpense;
       const net = clubTotalRevenue - expenses;
       const counter = a?.counter ?? 0;

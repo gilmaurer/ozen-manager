@@ -119,8 +119,8 @@ export function computeInvoice(
     event.deal_type === "fit_price" ? ticketBase : ticketBase - clubShare;
 
   const campaignAmount = event.campaign_amount ?? 0;
-  const clubCampaignPct = event.campaign ?? 0;
-  const producerCampaign = campaignAmount * ((100 - clubCampaignPct) / 100);
+  const campaignPct = event.campaign ?? 0;
+  const producerCampaign = campaignAmount * (campaignPct / 100);
 
   const acum = summary.acum ?? 0;
   const stereo = summary.stereo_record ?? 0;

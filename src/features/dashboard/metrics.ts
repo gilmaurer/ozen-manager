@@ -6,7 +6,6 @@ export interface ClubTakeBreakdown {
   ticketsClub: number;
   bar: number;
   commission: number;
-  campaign: number;
   others: number;
   total: number;
 }
@@ -15,7 +14,6 @@ const EMPTY: ClubTakeBreakdown = {
   ticketsClub: 0,
   bar: 0,
   commission: 0,
-  campaign: 0,
   others: 0,
   total: 0,
 };
@@ -33,16 +31,13 @@ export function clubTakeBreakdown(
   const ticketsClub = clubTicketShareOf(event, ticketBase);
   const bar = a.bar_total ?? 0;
   const commission = a.ozen_commission ?? 0;
-  const campaignAmt = event.campaign_amount ?? 0;
-  const campaignPct = event.campaign ?? 0;
-  const campaign = campaignAmt * (campaignPct / 100);
   const others =
     (a.acum ?? 0) +
     (a.stereo_record ?? 0) +
     (a.channels_record ?? 0) +
     (a.lightman ?? 0);
-  const total = ticketsClub + bar + commission + campaign + others;
-  return { ticketsClub, bar, commission, campaign, others, total };
+  const total = ticketsClub + bar + commission + others;
+  return { ticketsClub, bar, commission, others, total };
 }
 
 export function clubTakeOf(
@@ -78,19 +73,19 @@ export function forecastClubBreakdown(
   const commission = predicted.ozen_commission ?? 0;
   const campaignAmt = event.campaign_amount ?? 0;
   const campaignPct = event.campaign ?? 0;
-  const campaign = campaignAmt * (campaignPct / 100);
+  const clubCampaignCost = campaignAmt * ((100 - campaignPct) / 100);
   const others =
     (predicted.acum ?? 0) +
     (predicted.stereo_record ?? 0) +
     (predicted.channels_record ?? 0) +
     (predicted.lightman ?? 0);
-  const total = ticketsClub + bar + commission + campaign + others;
+  const total = ticketsClub + bar + commission + others;
   const staffCost = event.type
     ? staffCostByType.get(`${event.type}|${event.sub_type ?? ""}`) ?? 0
     : 0;
-  const expenses = staffCost;
+  const expenses = staffCost + clubCampaignCost;
   const net = total - expenses;
-  return { ticketsClub, bar, commission, campaign, others, total, expenses, net };
+  return { ticketsClub, bar, commission, others, total, expenses, net };
 }
 
 export function monthKey(iso: string): string {
