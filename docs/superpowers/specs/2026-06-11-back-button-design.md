@@ -103,16 +103,20 @@ state variables, but follow the `<page>.<stateName>` convention.
 
 ### 4. Placement, RTL, and existing links
 
-- Render `<BackButton />` at the top-start of each page, just inside (or directly
-  above) the `page-header`. One consistent location across all pages.
-- `.back-btn` CSS: small secondary button. In RTL it naturally sits at the
-  inline-start (right). The `›` glyph points right (back direction in RTL).
-- Replace the existing prominent back links with `<BackButton />`:
-  - `EventDetailPage` — `<Link to="/events" className="btn btn-secondary">חזרה לאירועים</Link>`
-  - `EventSummaryPage` — `חזרה לאירועים`
-  - `ProducerDetailPage` — `חזרה למפיקים`
+- Render `<BackButton />` **once, centrally** — inside `<main className="main">`
+  directly above `<Routes>` in `App`. Because every page renders inside `<main>`,
+  this puts a single consistent back button at the top of the content area for
+  **every** route, with zero per-page button edits. It auto-hides at the history
+  root (so the first page after login shows nothing).
+- `.back-btn` CSS: small secondary button with a bottom margin. In RTL it
+  naturally sits at the inline-start (right). The `›` glyph points right (back
+  direction in RTL).
+- The existing prominent "חזרה לX" links live only in the detail pages'
+  *not-found* cards (`EventDetailPage`, `EventSummaryPage`, `ProducerDetailPage`).
+  With the central back button now above them, those in-card links are redundant
+  and are **removed**.
 - Keep the small breadcrumb links (e.g. `<Link to="/events">אירועים</Link> ›`) as
-  breadcrumbs — only the big "חזרה לX" buttons are replaced.
+  breadcrumbs.
 
 ## Error handling / edge cases
 
