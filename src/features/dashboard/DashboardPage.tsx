@@ -112,8 +112,11 @@ export function DashboardPage() {
     () => new Map(),
   );
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [allTimes, setAllTimes] = useState(false);
+  const [filters, setFilters] = usePersistentState<Filters>(
+    "dashboard.filters",
+    EMPTY_FILTERS,
+  );
+  const [allTimes, setAllTimes] = usePersistentState("dashboard.allTimes", false);
   const [monthCursor, setMonthCursor] = usePersistentState<Date>(
     "dashboard.monthCursor",
     () => startOfMonth(new Date()),
