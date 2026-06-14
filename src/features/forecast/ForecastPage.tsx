@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { usePersistentState } from "../../hooks/usePersistentState";
 import type {
   EventStatus,
   EventType,
@@ -117,12 +118,19 @@ export function ForecastPage() {
     const saved = localStorage.getItem(SCOPE_STORAGE_KEY);
     return saved === "all" ? "all" : "upcoming";
   });
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [allTimes, setAllTimes] = useState(false);
-  const [monthCursor, setMonthCursor] = useState<Date>(() =>
-    startOfMonth(new Date()),
+  const [filters, setFilters] = usePersistentState<Filters>(
+    "forecast.filters",
+    EMPTY_FILTERS,
   );
-  const [sort, setSort] = useState<ForecastSort>({ key: "date", dir: "asc" });
+  const [allTimes, setAllTimes] = usePersistentState("forecast.allTimes", false);
+  const [monthCursor, setMonthCursor] = usePersistentState<Date>(
+    "forecast.monthCursor",
+    () => startOfMonth(new Date()),
+  );
+  const [sort, setSort] = usePersistentState<ForecastSort>("forecast.sort", {
+    key: "date",
+    dir: "asc",
+  });
   const { statuses, types, typeByCode } = useEnums();
 
   useEffect(() => {
