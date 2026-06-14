@@ -237,7 +237,8 @@ export function EventsPage() {
       const expenses = staffCost + clubCampaignExpense;
       const net = clubTotalRevenue - expenses;
       const counter = a?.counter ?? 0;
-      const barPerHead = counter > 0 ? barTotal / counter : 0;
+      const barGross = a?.bar_gross ?? 0;
+      const barPerHead = counter > 0 ? barGross / counter : 0;
       const dealNumeric =
         e.deal_type === "fit_price"
           ? e.deal_fit_price ?? 0

@@ -58,6 +58,7 @@ function averageAggregates(
     presale_commissions: sum("presale_commissions") / n,
     ozen_commission: sum("ozen_commission") / n,
     bar_total: sum("bar_total") / n,
+    bar_gross: sum("bar_gross") / n,
     counter: counterAvg,
     acum: sum("acum") / n,
     stereo_record: sum("stereo_record") / n,

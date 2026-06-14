@@ -677,7 +677,7 @@ export function EventSummaryPage() {
   const counterN = counter === "" ? null : Number(counter);
   const perHead =
     counterN !== null && counterN > 0 && Number.isFinite(counterN)
-      ? barTotal / counterN
+      ? barIncome / counterN
       : null;
   const staffTotal = workers.reduce(
     (s, w) => s + workerCost(w.rate, w.hours),
@@ -731,6 +731,7 @@ export function EventSummaryPage() {
         (summary.bar_cash ?? 0) +
         (summary.bar_credit ?? 0) -
         (summary.bar_expenses ?? 0),
+      bar_gross: (summary.bar_cash ?? 0) + (summary.bar_credit ?? 0),
       counter: counterN,
       acum: acumN,
       stereo_record: stereoRecordN,

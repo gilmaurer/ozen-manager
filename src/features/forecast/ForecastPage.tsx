@@ -209,7 +209,7 @@ export function ForecastPage() {
         net,
         counter,
         ticketsCount: a?.tickets_count ?? 0,
-        barPerHead: counter && counter > 0 ? barTotal / counter : 0,
+        barPerHead: counter && counter > 0 ? (a?.bar_gross ?? 0) / counter : 0,
       };
     });
   }, [filteredEvents, forecasts, staffCostByType]);

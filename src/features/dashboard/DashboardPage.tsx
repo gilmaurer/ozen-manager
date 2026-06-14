@@ -196,7 +196,7 @@ export function DashboardPage() {
       if (a?.counter != null && a.counter > 0) {
         attended += a.counter;
         attendanceEvents += 1;
-        barPerHeadSum += (a.bar_total ?? 0) / a.counter;
+        barPerHeadSum += (a.bar_gross ?? 0) / a.counter;
         barPerHeadCount += 1;
       }
     }
@@ -307,7 +307,7 @@ export function DashboardPage() {
       .map((e) => {
         const a = aggs.get(e.id);
         const counter = a?.counter ?? null;
-        const bar = a?.bar_total ?? 0;
+        const bar = a?.bar_gross ?? 0;
         return {
           id: e.id,
           name: e.name,

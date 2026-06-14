@@ -212,6 +212,9 @@ export interface SummaryAggregate {
   presale_commissions: number;
   ozen_commission: number;
   bar_total: number;
+  // Gross bar income (bar_cash + bar_credit) before VAT / operating / expenses.
+  // Used for the "בר לראש" (bar per head) metric.
+  bar_gross: number;
   counter: number | null;
   acum: number;
   stereo_record: number;
@@ -304,6 +307,7 @@ export async function listSummaryAggregates(): Promise<
       ozen_commission: agg.ozen_commission,
       bar_total:
         (s.bar_cash ?? 0) + (s.bar_credit ?? 0) - (s.bar_expenses ?? 0),
+      bar_gross: (s.bar_cash ?? 0) + (s.bar_credit ?? 0),
       counter: s.counter,
       acum,
       stereo_record: stereo,
