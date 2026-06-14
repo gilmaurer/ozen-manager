@@ -124,9 +124,6 @@ export function ProducerDetailPage() {
     return (
       <div className="card">
         <div className="empty">המפיק לא נמצא.</div>
-        <Link to="/producers" className="btn btn-secondary">
-          חזרה למפיקים
-        </Link>
       </div>
     );
   }

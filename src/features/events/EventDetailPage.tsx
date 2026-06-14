@@ -76,7 +76,6 @@ export function EventDetailPage() {
     return (
       <div className="card">
         <div className="empty">האירוע לא נמצא.</div>
-        <Link to="/events" className="btn btn-secondary">חזרה לאירועים</Link>
       </div>
     );
   }
