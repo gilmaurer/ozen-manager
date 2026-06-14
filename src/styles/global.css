@@ -780,7 +780,9 @@ label {
 }
 
 .back-btn {
-  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   margin-bottom: 16px;
   padding: 4px 12px;
   font-size: 13px;

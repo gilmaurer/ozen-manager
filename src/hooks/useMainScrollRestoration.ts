@@ -42,8 +42,7 @@ export function useMainScrollRestoration(
     const tryRestore = () => {
       el.scrollTop = target;
       const reached = Math.abs(el.scrollTop - target) < 2;
-      const contentTallEnough = el.scrollHeight - el.clientHeight >= target;
-      if (!reached && !contentTallEnough && performance.now() - start < 1200) {
+      if (!reached && performance.now() - start < 1200) {
         raf = requestAnimationFrame(tryRestore);
       }
     };
