@@ -246,11 +246,17 @@ export function PaymentsPage() {
     const applyMonth =
       !allTimes && filters.from === "" && filters.to === "";
     const { start, end } = monthBounds(monthCursor);
-    const wantedDeal = direction === "incoming" ? "fit_price" : "split";
     const totalsFn =
       direction === "incoming" ? totalsForIncoming : totalsFor;
     return events
-      .filter((e) => e.deal_type === wantedDeal)
+      .filter((e) =>
+        direction === "incoming"
+          ? // The club is owed on fixed-price deals, and on any deal explicitly
+            // marked "waiting payment to club" (e.g. a split deal where the
+            // producer collected and owes the club its share).
+            e.deal_type === "fit_price" || isWaitingPaymentOzen(e.status)
+          : e.deal_type === "split",
+      )
       .filter((e) => {
         if (tab === "waiting_payment" && direction === "incoming") {
           return (
@@ -337,8 +343,20 @@ export function PaymentsPage() {
   }
 
   function totalsForIncoming(e: EventWithProducer): ProducerTotals {
-    const amount = e.deal_fit_price ?? 0;
-    return { net: amount, netExVat: amount / (1 + VAT_RATE) };
+    // Fixed-price deals: the club is owed the agreed fixed price.
+    if (e.deal_type === "fit_price") {
+      const amount = e.deal_fit_price ?? 0;
+      return { net: amount, netExVat: amount / (1 + VAT_RATE) };
+    }
+    // Split deals marked "waiting payment to club": the club is owed its share
+    // of ticket revenue.
+    const a = aggs.get(e.id);
+    const presaleRevenue = a?.presale_revenue ?? 0;
+    const presaleCommissions = a?.presale_commissions ?? 0;
+    const boxOfficeRevenue = a?.box_office_revenue ?? 0;
+    const ticketBase = presaleRevenue - presaleCommissions + boxOfficeRevenue;
+    const clubShare = clubTicketShareOf(e, ticketBase);
+    return { net: clubShare, netExVat: clubShare / (1 + VAT_RATE) };
   }
 
   function totalsFor(e: EventWithProducer): ProducerTotals {
@@ -481,7 +499,7 @@ export function PaymentsPage() {
   const showCheckColumns = tab !== "waiting_invoice";
   const directionalEvents = events.filter((e) =>
     direction === "incoming"
-      ? e.deal_type === "fit_price"
+      ? e.deal_type === "fit_price" || isWaitingPaymentOzen(e.status)
       : e.deal_type === "split",
   );
   const hasEvents = directionalEvents.length > 0;
