@@ -948,6 +948,7 @@ export function EventsPage() {
                         סטטוס{eventsArrow("status")}
                       </button>
                     </th>
+                    <th>חשבונית</th>
                     <th>הערות</th>
                     <th></th>
                   </tr>
@@ -989,6 +990,19 @@ export function EventsPage() {
                           value={e.status}
                           onChange={(next) => handleStatusChange(e, next)}
                         />
+                      </td>
+                      <td dir="ltr" style={{ textAlign: "start" }}>
+                        {e.invoice_url ? (
+                          <a
+                            href={e.invoice_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            פתח חשבונית
+                          </a>
+                        ) : (
+                          "—"
+                        )}
                       </td>
                       <td
                         className="row-value cell-truncate"

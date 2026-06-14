@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: "1.3.4",
+    date: "2026-06-11",
+    items: [
+      "אירועים: עמודת 'חשבונית' חדשה בטבלה — אם התקבלה חשבונית מהמפיק מוצג קישור 'פתח חשבונית', אחרת '—'",
+    ],
+  },
+  {
     version: "1.3.3",
     date: "2026-06-10",
     items: [
