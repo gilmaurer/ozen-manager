@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { usePersistentState } from "../../hooks/usePersistentState";
 import {
   Bar,
   BarChart,
@@ -113,8 +114,9 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [allTimes, setAllTimes] = useState(false);
-  const [monthCursor, setMonthCursor] = useState<Date>(() =>
-    startOfMonth(new Date()),
+  const [monthCursor, setMonthCursor] = usePersistentState<Date>(
+    "dashboard.monthCursor",
+    () => startOfMonth(new Date()),
   );
 
   function updateFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
