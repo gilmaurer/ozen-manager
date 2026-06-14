@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { usePersistentState } from "../../hooks/usePersistentState";
 import {
   createProducer,
   deleteProducer,
@@ -21,9 +22,12 @@ export function ProducersPage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<ProducerWithCount | null>(null);
   const [creating, setCreating] = useState(false);
-  const [q, setQ] = useState("");
-  const [pageSize, setPageSize] = useState<PageSize>(20);
-  const [page, setPage] = useState(0);
+  const [q, setQ] = usePersistentState("producers.q", "");
+  const [pageSize, setPageSize] = usePersistentState<PageSize>(
+    "producers.pageSize",
+    20,
+  );
+  const [page, setPage] = usePersistentState("producers.page", 0);
 
   const visible = useMemo(() => {
     const needle = q.trim().toLowerCase();
