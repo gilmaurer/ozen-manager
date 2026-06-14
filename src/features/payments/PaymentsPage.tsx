@@ -41,7 +41,13 @@ import {
 
 type Tab = "waiting_invoice" | "waiting_payment" | "done";
 const TABS: Tab[] = ["waiting_invoice", "waiting_payment", "done"];
-const WAITING_PAYMENT_OZEN = "ממתין_לתשלום_לאוזן_4689";
+// Status codes are slugified label + random suffix (see enumsRepo#slugify), so
+// the "waiting payment to club" status is matched by its slug prefix rather than
+// a fixed code — the random suffix differs between environments.
+const WAITING_PAYMENT_OZEN_SLUG = "ממתין_לתשלום_לאוזן";
+function isWaitingPaymentOzen(status: string): boolean {
+  return status.startsWith(WAITING_PAYMENT_OZEN_SLUG);
+}
 
 type Direction = "outgoing" | "incoming";
 const DIRECTION_LABELS: Record<Direction, string> = {
@@ -200,7 +206,13 @@ export function PaymentsPage() {
     key: "date",
     dir: "desc",
   });
-  const { types, typeByCode, statusByCode } = useEnums();
+  const { types, typeByCode, statusByCode, statuses } = useEnums();
+  // The actual code of the "waiting payment to club" status in this environment
+  // (slug + environment-specific suffix), resolved from the enums.
+  const waitingPaymentOzenCode = useMemo(
+    () => statuses.find((s) => isWaitingPaymentOzen(s.code))?.code ?? null,
+    [statuses],
+  );
   const { ask, notify } = useDialog();
 
   function updateFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
@@ -217,7 +229,7 @@ export function PaymentsPage() {
       setEvents(
         all.filter(
           (e) =>
-            TABS.includes(e.status as Tab) || e.status === WAITING_PAYMENT_OZEN,
+            TABS.includes(e.status as Tab) || isWaitingPaymentOzen(e.status),
         ),
       );
       setAggs(a);
@@ -243,7 +255,7 @@ export function PaymentsPage() {
         if (tab === "waiting_payment" && direction === "incoming") {
           return (
             e.status === "waiting_payment" ||
-            e.status === WAITING_PAYMENT_OZEN
+            isWaitingPaymentOzen(e.status)
           );
         }
         return e.status === tab;
@@ -360,10 +372,11 @@ export function PaymentsPage() {
       if (!url) return; // user cancelled
       await updateEventInvoiceUrl(e.id, url);
       if (e.status === "waiting_invoice") {
+        // Fall back to the generic waiting status if the club-payment status
+        // hasn't been defined in this environment.
+        const ozenCode = waitingPaymentOzenCode ?? "waiting_payment";
         const next =
-          e.deal_type === "fit_price"
-            ? WAITING_PAYMENT_OZEN
-            : "waiting_payment";
+          e.deal_type === "fit_price" ? ozenCode : "waiting_payment";
         await updateEventStatus(e.id, next);
       }
       await refresh();
@@ -475,7 +488,7 @@ export function PaymentsPage() {
   const tabHasEvents = directionalEvents.some((e) => {
     if (tab === "waiting_payment" && direction === "incoming") {
       return (
-        e.status === "waiting_payment" || e.status === WAITING_PAYMENT_OZEN
+        e.status === "waiting_payment" || isWaitingPaymentOzen(e.status)
       );
     }
     return e.status === tab;
@@ -863,8 +876,8 @@ export function PaymentsPage() {
                         value={e.status}
                         onChange={(next) => handleStatusChange(e, next)}
                         allowedCodes={
-                          direction === "incoming"
-                            ? [...TABS, WAITING_PAYMENT_OZEN]
+                          direction === "incoming" && waitingPaymentOzenCode
+                            ? [...TABS, waitingPaymentOzenCode]
                             : TABS
                         }
                       />
