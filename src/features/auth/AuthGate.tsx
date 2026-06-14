@@ -12,7 +12,13 @@ export function AuthGate({ children }: { children: ReactNode }) {
       setSession(data.session);
       setReady(true);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_ev, s) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((ev, s) => {
+      // After sign-out, reset the route so the next login lands on the
+      // dashboard — HashRouter otherwise keeps the last hash across
+      // logout/login and would drop the user back on the page they left.
+      if (ev === "SIGNED_OUT") {
+        window.location.hash = "#/";
+      }
       setSession(s);
     });
     return () => sub.subscription.unsubscribe();
