@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { usePersistentState } from "../../hooks/usePersistentState";
 import type {
   EventStatus,
   EventType,
@@ -138,19 +139,23 @@ export function EventsPage() {
     const saved = localStorage.getItem(SCOPE_STORAGE_KEY);
     return saved === "summaries" ? "summaries" : "all";
   });
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [allTimes, setAllTimes] = useState(false);
-  const [monthCursor, setMonthCursor] = useState<Date>(() =>
-    startOfMonth(new Date()),
+  const [filters, setFilters] = usePersistentState<Filters>(
+    "events.filters",
+    EMPTY_FILTERS,
   );
-  const [summarySort, setSummarySort] = useState<SummarySort>({
-    key: "date",
-    dir: "desc",
-  });
-  const [eventsSort, setEventsSort] = useState<EventsSort>({
-    key: "date",
-    dir: "desc",
-  });
+  const [allTimes, setAllTimes] = usePersistentState("events.allTimes", false);
+  const [monthCursor, setMonthCursor] = usePersistentState<Date>(
+    "events.monthCursor",
+    () => startOfMonth(new Date()),
+  );
+  const [summarySort, setSummarySort] = usePersistentState<SummarySort>(
+    "events.summarySort",
+    { key: "date", dir: "desc" },
+  );
+  const [eventsSort, setEventsSort] = usePersistentState<EventsSort>(
+    "events.eventsSort",
+    { key: "date", dir: "desc" },
+  );
   const [summaryAggs, setSummaryAggs] = useState<Map<number, SummaryAggregate>>(
     () => new Map(),
   );
