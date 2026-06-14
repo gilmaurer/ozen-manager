@@ -6,6 +6,13 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_ENTRIES: ChangelogEntry[] = [
   {
+    version: "1.4.0",
+    date: "2026-06-14",
+    items: [
+      "נוסף כפתור 'אחורה' בכל עמוד — חוזר לעמוד הקודם תוך שמירה על הסינון, המיון ומיקום הגלילה שהיו בו",
+    ],
+  },
+  {
     version: "1.3.4",
     date: "2026-06-11",
     items: [
