@@ -282,7 +282,13 @@ export function DashboardPage() {
   const topProducers = useMemo(() => {
     const byId = new Map<
       number,
-      { id: number; name: string; total: number; count: number }
+      {
+        id: number;
+        name: string;
+        total: number;
+        count: number;
+        types: Set<string>;
+      }
     >();
     for (const e of eventsWithSummary) {
       if (e.producer_id == null) continue;
@@ -291,9 +297,11 @@ export function DashboardPage() {
         name: e.producer_name ?? `#${e.producer_id}`,
         total: 0,
         count: 0,
+        types: new Set<string>(),
       };
       cur.total += clubTakeBreakdown(e, aggs).total;
       cur.count += 1;
+      if (e.type) cur.types.add(e.type);
       byId.set(e.producer_id, cur);
     }
     return Array.from(byId.values())
@@ -452,7 +460,13 @@ export function DashboardPage() {
   const forecastTopProducers = useMemo(() => {
     const byId = new Map<
       number,
-      { id: number; name: string; total: number; count: number }
+      {
+        id: number;
+        name: string;
+        total: number;
+        count: number;
+        types: Set<string>;
+      }
     >();
     for (const e of forecastableEvents) {
       if (e.producer_id == null) continue;
@@ -463,9 +477,11 @@ export function DashboardPage() {
         name: e.producer_name ?? `#${e.producer_id}`,
         total: 0,
         count: 0,
+        types: new Set<string>(),
       };
       cur.total += br.total;
       cur.count += 1;
+      if (e.type) cur.types.add(e.type);
       byId.set(e.producer_id, cur);
     }
     return Array.from(byId.values())
@@ -773,6 +789,7 @@ export function DashboardPage() {
                     <th>שם</th>
                     <th>תאריך</th>
                     <th>מפיק</th>
+                    <th>סוג</th>
                     <th>משתתפים</th>
                     <th>בר</th>
                     <th>סה"כ למועדון</th>
@@ -799,6 +816,11 @@ export function DashboardPage() {
                       </td>
                       <td className="row-value" dir="auto">
                         {r.event.producer_name ?? "—"}
+                      </td>
+                      <td className="muted" dir="auto">
+                        {r.event.type
+                          ? typeByCode[r.event.type]?.label ?? r.event.type
+                          : "—"}
                       </td>
                       <td dir="ltr" style={{ textAlign: "start" }}>
                         {r.counter == null ? "—" : fmtNumber(r.counter)}
@@ -828,6 +850,7 @@ export function DashboardPage() {
                 <thead>
                   <tr>
                     <th>מפיק</th>
+                    <th>סוגים</th>
                     <th>אירועים</th>
                     <th>סה"כ למועדון</th>
                     <th>ממוצע לאירוע</th>
@@ -844,6 +867,13 @@ export function DashboardPage() {
                         >
                           {p.name}
                         </Link>
+                      </td>
+                      <td className="muted" dir="auto">
+                        {p.types.size === 0
+                          ? "—"
+                          : Array.from(p.types)
+                              .map((c) => typeByCode[c]?.label ?? c)
+                              .join(", ")}
                       </td>
                       <td>{fmtNumber(p.count)}</td>
                       <td
@@ -1056,6 +1086,7 @@ export function DashboardPage() {
                     <th>שם</th>
                     <th>תאריך</th>
                     <th>מפיק</th>
+                    <th>סוג</th>
                     <th>משתתפים צפויים</th>
                     <th>נטו צפוי</th>
                     <th>סה"כ צפוי למועדון</th>
@@ -1082,6 +1113,11 @@ export function DashboardPage() {
                       </td>
                       <td className="row-value" dir="auto">
                         {r.event.producer_name ?? "—"}
+                      </td>
+                      <td className="muted" dir="auto">
+                        {r.event.type
+                          ? typeByCode[r.event.type]?.label ?? r.event.type
+                          : "—"}
                       </td>
                       <td dir="ltr" style={{ textAlign: "start" }}>
                         {r.counter == null ? "—" : fmtNumber(r.counter)}
@@ -1111,6 +1147,7 @@ export function DashboardPage() {
                 <thead>
                   <tr>
                     <th>מפיק</th>
+                    <th>סוגים</th>
                     <th>אירועים עתידיים</th>
                     <th>סה"כ צפוי למועדון</th>
                     <th>ממוצע צפוי לאירוע</th>
@@ -1127,6 +1164,13 @@ export function DashboardPage() {
                         >
                           {p.name}
                         </Link>
+                      </td>
+                      <td className="muted" dir="auto">
+                        {p.types.size === 0
+                          ? "—"
+                          : Array.from(p.types)
+                              .map((c) => typeByCode[c]?.label ?? c)
+                              .join(", ")}
                       </td>
                       <td>{fmtNumber(p.count)}</td>
                       <td
