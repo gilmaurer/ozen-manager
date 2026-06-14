@@ -39,7 +39,18 @@ export function useMainScrollRestoration(
 
     const start = performance.now();
     let raf = 0;
+    let cancelled = false;
+    // If the user starts scrolling during the restore window, stop fighting them.
+    const stop = () => {
+      cancelled = true;
+      cancelAnimationFrame(raf);
+    };
+    window.addEventListener("wheel", stop, { once: true, passive: true });
+    window.addEventListener("touchstart", stop, { once: true, passive: true });
+    window.addEventListener("keydown", stop, { once: true });
+
     const tryRestore = () => {
+      if (cancelled) return;
       el.scrollTop = target;
       const reached = Math.abs(el.scrollTop - target) < 2;
       if (!reached && performance.now() - start < 1200) {
@@ -47,6 +58,12 @@ export function useMainScrollRestoration(
       }
     };
     raf = requestAnimationFrame(tryRestore);
-    return () => cancelAnimationFrame(raf);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("wheel", stop);
+      window.removeEventListener("touchstart", stop);
+      window.removeEventListener("keydown", stop);
+    };
   }, [containerRef, location.key, navType]);
 }

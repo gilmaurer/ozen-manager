@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { usePersistentState } from "../../hooks/usePersistentState";
 import {
@@ -39,8 +39,14 @@ export function ProducersPage() {
     );
   }, [producers, q]);
 
-  // Reset to the first page whenever the filtered set or page size changes.
+  // Reset to the first page whenever the search or page size changes — but not
+  // on the initial mount, so a page restored from the session cache survives.
+  const skipPageReset = useRef(true);
   useEffect(() => {
+    if (skipPageReset.current) {
+      skipPageReset.current = false;
+      return;
+    }
     setPage(0);
   }, [q, pageSize]);
 
