@@ -23,6 +23,8 @@ import { UpdaterProvider } from "./features/updates/UpdaterProvider";
 import { UpdateBanner } from "./features/updates/UpdateBanner";
 import { UpdateCheckButton } from "./features/updates/UpdateCheckButton";
 import { WhatsNewGate } from "./features/changelog/WhatsNewGate";
+import { BackButton } from "./components/BackButton";
+import { ScrollRestorer } from "./components/ScrollRestorer";
 
 function OfflineBanner() {
   const [offline, setOffline] = useState(
@@ -234,6 +236,7 @@ function AdminGuardedStaff() {
 }
 
 export default function App() {
+  const mainRef = useRef<HTMLElement | null>(null);
   return (
     <AuthGate>
       <EnumsProvider>
@@ -243,9 +246,11 @@ export default function App() {
               <UpdateBanner />
               <OfflineBanner />
               <WhatsNewGate />
+              <ScrollRestorer mainRef={mainRef} />
               <div className="layout">
                 <Sidebar />
-                <main className="main">
+                <main className="main" ref={mainRef}>
+                  <BackButton />
                   <Routes>
                     <Route path="/" element={<DashboardPage />} />
                     <Route path="/events" element={<EventsPage />} />
