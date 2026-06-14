@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { usePersistentState } from "../../hooks/usePersistentState";
 import type {
   EventStatus,
   EventType,
@@ -178,14 +179,24 @@ export function PaymentsPage() {
   const [proofUploadingId, setProofUploadingId] = useState<number | null>(
     null,
   );
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [allTimes, setAllTimes] = useState(false);
-  const [tab, setTab] = useState<Tab>("waiting_invoice");
-  const [direction, setDirection] = useState<Direction>("outgoing");
-  const [monthCursor, setMonthCursor] = useState<Date>(() =>
-    startOfMonth(new Date()),
+  const [filters, setFilters] = usePersistentState<Filters>(
+    "payments.filters",
+    EMPTY_FILTERS,
   );
-  const [sort, setSort] = useState<PaymentsSort>({
+  const [allTimes, setAllTimes] = usePersistentState("payments.allTimes", false);
+  const [tab, setTab] = usePersistentState<Tab>(
+    "payments.tab",
+    "waiting_invoice",
+  );
+  const [direction, setDirection] = usePersistentState<Direction>(
+    "payments.direction",
+    "outgoing",
+  );
+  const [monthCursor, setMonthCursor] = usePersistentState<Date>(
+    "payments.monthCursor",
+    () => startOfMonth(new Date()),
+  );
+  const [sort, setSort] = usePersistentState<PaymentsSort>("payments.sort", {
     key: "date",
     dir: "desc",
   });
